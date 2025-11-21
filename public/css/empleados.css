@@ -1,28 +1,10 @@
 /* resources/css/empleados.css */
 
-.empleado-row {
-  transition:
-    background-color 150ms ease-out,
-    transform 150ms ease-out,
-    box-shadow 150ms ease-out;
-}
-
-.empleado-row:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
-  background-color: rgba(239, 246, 255, 0.85);
-}
-
-.empleado-row button:hover {
-  box-shadow:
-    0 0 0 1px rgba(15, 23, 42, 0.06),
-    0 10px 25px rgba(15, 23, 42, 0.12);
-}
-
-@keyframes empleadoFadeIn {
+/* ---------- Animaciones ---------- */
+@keyframes empleadosFadeInUp {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
@@ -30,6 +12,362 @@
   }
 }
 
-tbody[data-empleados] tr {
-  animation: empleadoFadeIn 220ms ease-out;
+@keyframes empleadosGlowPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.35);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(79, 70, 229, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(79, 70, 229, 0);
+  }
+}
+
+/* ---------- Fila de empleado ---------- */
+
+.empleado-row {
+  transition:
+    background-color 140ms ease-out,
+    transform 140ms ease-out,
+    box-shadow 140ms ease-out;
+}
+
+.empleado-row:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+}
+
+/* ---------- Pills de estado ---------- */
+
+.empleados-pill-estado {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border-radius: 9999px;
+  padding: 0.2rem 0.75rem;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition:
+    background-color 150ms ease-out,
+    color 150ms ease-out,
+    transform 120ms ease-out,
+    box-shadow 120ms ease-out,
+    border-color 150ms ease-out;
+}
+
+.empleados-pill-estado-alta {
+  background: #ecfdf5;
+  color: #047857;
+  border-color: rgba(16, 185, 129, 0.25);
+}
+
+.empleados-pill-estado-baja {
+  background: #fef2f2;
+  color: #b91c1c;
+  border-color: rgba(248, 113, 113, 0.35);
+}
+
+.empleados-pill-estado:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.02),
+    0 8px 20px rgba(15, 23, 42, 0.12);
+}
+
+.empleados-pill-dot {
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 9999px;
+}
+
+/* ---------- Botones principales ---------- */
+
+.empleados-btn-cta {
+  animation: empleadosGlowPulse 2.4s infinite;
+}
+
+.empleados-btn-editar {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 9999px;
+  padding: 0.35rem 0.9rem;
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba(251, 191, 36, 0.92);
+  color: #fff;
+  border: none;
+  box-shadow: 0 6px 16px rgba(180, 83, 9, 0.2);
+  transition:
+    transform 120ms ease-out,
+    box-shadow 120ms ease-out,
+    background-color 140ms ease-out;
+}
+
+.empleados-btn-editar:hover {
+  transform: translateY(-1px);
+  background: rgba(245, 158, 11, 0.98);
+  box-shadow: 0 10px 22px rgba(180, 83, 9, 0.32);
+}
+
+.empleados-btn-eliminar {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 9999px;
+  padding: 0.35rem 0.9rem;
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba(244, 63, 94, 0.96);
+  color: #fff;
+  border: none;
+  box-shadow: 0 6px 16px rgba(159, 18, 57, 0.25);
+  transition:
+    transform 120ms ease-out,
+    box-shadow 120ms ease-out,
+    background-color 140ms ease-out;
+}
+
+.empleados-btn-eliminar:hover {
+  transform: translateY(-1px);
+  background: rgba(225, 29, 72, 0.98);
+  box-shadow: 0 10px 24px rgba(159, 18, 57, 0.4);
+}
+
+.empleados-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.35rem 0.9rem;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  background: #ffffff;
+  color: #475569;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.04);
+  transition:
+    background-color 120ms ease-out,
+    color 120ms ease-out,
+    transform 120ms ease-out,
+    box-shadow 120ms ease-out,
+    border-color 120ms ease-out;
+}
+
+.empleados-btn-ghost:hover {
+  background: #f9fafb;
+  color: #1f2937;
+  border-color: rgba(79, 70, 229, 0.65);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.12);
+}
+
+/* ---------- Filtros ---------- */
+
+.empleados-filtros {
+  animation: empleadosFadeInUp 200ms ease-out;
+}
+
+.empleados-label {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.empleados-input{
+  text-transform: capitalize;
+}
+
+.empleados-input,
+.empleados-select {
+  display: block;
+  width: 100%;
+  border-radius: 0.75rem;
+  border: 1px solid #e2e8f0;
+  background-color: #f8fafc;
+  padding: 0.55rem 0.75rem;
+  font-size: 13px;
+  color: #0f172a;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+  outline: none;
+  transition:
+    border-color 120ms ease-out,
+    box-shadow 120ms ease-out,
+    background-color 120ms ease-out;
+}
+
+.empleados-input:focus,
+.empleados-select:focus {
+  border-color: #4f46e5;
+  background-color: #ffffff;
+  box-shadow:
+    0 0 0 1px rgba(79, 70, 229, 0.08),
+    0 6px 16px rgba(15, 23, 42, 0.08);
+}
+
+/* ---------- SweetAlert estilizado ---------- */
+
+.empleados-swal-popup {
+  border-radius: 1.5rem;
+  padding: 1.5rem 1.75rem 1.75rem;
+  background: radial-gradient(circle at top left, #eef2ff 0, #f9fafb 40%, #ffffff 100%);
+}
+
+.empleados-swal-confirm {
+  border-radius: 9999px !important;
+  padding: 0.6rem 1.6rem !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  background: #4f46e5 !important;
+  color: #fff !important;
+  box-shadow: 0 10px 24px rgba(79, 70, 229, 0.35) !important;
+}
+
+.empleados-swal-confirm:hover {
+  background: #4338ca !important;
+}
+
+.empleados-swal-cancel {
+  border-radius: 9999px !important;
+  padding: 0.6rem 1.6rem !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  background: #e5e7eb !important;
+  color: #111827 !important;
+}
+
+/* ---------- Formulario (scroll y secciones) ---------- */
+
+.empleados-form-wrapper {
+  max-height: 60vh;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+.empleados-form-wrapper::-webkit-scrollbar {
+  width: 6px;
+}
+
+.empleados-form-wrapper::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.empleados-form-wrapper::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.6);
+  border-radius: 9999px;
+}
+
+.empleados-section {
+  border-radius: 1rem;
+  border: 1px solid #e5e7eb;
+  background: linear-gradient(180deg, #f9fafb 0, #ffffff 38%, #f9fafb 100%);
+  margin-bottom: 0.75rem;
+  overflow: hidden;
+  transition:
+    box-shadow 160ms ease-out,
+    border-color 160ms ease-out,
+    background 160ms ease-out;
+}
+
+.empleados-section-open {
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+  border-color: rgba(129, 140, 248, 0.6);
+}
+
+.empleados-section-header {
+  width: 100%;
+  text-align: left;
+  padding: 0.75rem 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.75rem;
+  align-items: center;
+  background: linear-gradient(90deg, #eef2ff 0, #e0f2fe 35%, #ffffff 100%);
+  cursor: pointer;
+}
+
+.empleados-section-header-static {
+  cursor: default;
+}
+
+.empleados-section-title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #4b5563;
+}
+
+.empleados-section-subtitle {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.empleados-section-arrow {
+  margin-left: auto;
+  font-size: 13px;
+  color: #9ca3af;
+  transition: transform 160ms ease-out;
+}
+
+.empleados-section-open .empleados-section-arrow {
+  transform: rotate(180deg);
+}
+
+.empleados-section-body {
+  padding: 0.85rem 1rem 1rem;
+  display: none;
+}
+
+.empleados-section-open .empleados-section-body {
+  display: block;
+  animation: empleadosFadeInUp 160ms ease-out;
+}
+
+.empleados-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.6rem 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+@media (min-width: 1024px) {
+  .empleados-grid-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ayuda de campos */
+.empleados-help {
+  margin-top: 0.2rem;
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.empleados-required {
+  color: #ef4444;
+}
+
+/* ---------- Vista "Ver" ---------- */
+
+.empleados-view-wrapper {
+  max-height: 70vh;
+}
+
+.empleados-view-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #9ca3af;
+}
+
+.empleados-view-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
 }

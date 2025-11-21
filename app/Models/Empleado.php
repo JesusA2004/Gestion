@@ -62,7 +62,7 @@ class Empleado extends Model
 
     public function supervisor()
     {
-        return $this->belongsTo(Patron::class, 'supervisor_id');
+        return $this->belongsTo(Supervisor::class, 'supervisor_id');
     }
 
     public function sucursal()

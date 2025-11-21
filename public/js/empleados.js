@@ -1,875 +1,935 @@
 // public/js/empleados.js
 (function () {
-    const config = window.EmpleadosConfig || {};
-    const csrfToken = config.csrfToken || '';
-    const baseUrl   = config.baseUrl || '';
-    const lookups   = config.lookups || {};
+  const cfg = window.EmpleadosConfig || {};
+  const baseUrl = cfg.baseUrl || "";
+  const csrfToken = cfg.csrfToken || "";
+  const lookups = cfg.lookups || {};
 
-    /* ===================== Filtro tabla principal ===================== */
+  /* =================== Helpers =================== */
 
-    document.addEventListener('DOMContentLoaded', () => {
-        const textInput   = document.getElementById('empleado-search-text');
-        const estadoInput = document.getElementById('empleado-filter-estado');
+  function asArray(v) {
+    return Array.isArray(v) ? v : [];
+  }
 
-        const applyFilters = () => {
-            const text   = (textInput?.value || '').toLowerCase().trim();
-            const estado = (estadoInput?.value || '').toLowerCase().trim();
+  function handleCrudError(error, fallbackMessage) {
+    let message = fallbackMessage || "Ocurrió un error inesperado.";
 
-            const rows = document.querySelectorAll('tbody[data-empleados] tr[data-empleado-row]');
-            rows.forEach(row => {
-                const rowSearch = (row.dataset.search || '').toLowerCase();
-                const rowEstado = (row.dataset.estado || '').toLowerCase();
+    if (error && error.errors) {
+      const firstKey = Object.keys(error.errors)[0];
+      if (firstKey && error.errors[firstKey][0]) {
+        message = error.errors[firstKey][0];
+      }
+    } else if (error && error.message) {
+      message = error.message;
+    }
 
-                const matchesText   = !text   || rowSearch.includes(text);
-                const matchesEstado = !estado || rowEstado === estado;
+    Swal.showValidationMessage(message);
+  }
 
-                if (matchesText && matchesEstado) {
-                    row.classList.remove('hidden');
-                } else {
-                    row.classList.add('hidden');
-                }
-            });
-        };
+  function showErrorAlert(message) {
+    Swal.fire({
+      icon: "error",
+      title: "Error",
+      text: message || "Ocurrió un error.",
+      confirmButtonColor: "#4f46e5",
+    });
+  }
 
-        if (textInput)   textInput.addEventListener('input', applyFilters);
-        if (estadoInput) estadoInput.addEventListener('change', applyFilters);
+  function parseDate(value) {
+    if (!value) return null;
+    return new Date(value + "T00:00:00");
+  }
+
+  function cambiarEstado(id, nuevoEstado) {
+      Swal.fire({
+          title: '¿Confirmar cambio?',
+          text: `El empleado pasará a estado: ${nuevoEstado}`,
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonText: 'Sí, cambiar',
+          cancelButtonText: 'Cancelar'
+      }).then(res => {
+          if (!res.isConfirmed) return;
+
+          fetch(`/empleados/${id}/estado`, {
+              method: "PATCH",
+              headers: {
+                  "Content-Type": "application/json",
+                  "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').content
+              },
+              body: JSON.stringify({ estado: nuevoEstado })
+          })
+          .then(r => r.json())
+          .then(resp => {
+              if (resp.ok) {
+                  Swal.fire('Estado actualizado', '', 'success');
+                  location.reload();
+              }
+          })
+      });
+  }
+
+  /* =================== Filtros en tiempo real =================== */
+
+  document.addEventListener("DOMContentLoaded", () => {
+    const textInput = document.getElementById("empleado-search-text");
+    const estadoSel = document.getElementById("empleado-filter-estado");
+    const patronSel = document.getElementById("empleado-filter-patron");
+    const sucursalSel = document.getElementById("empleado-filter-sucursal");
+    const deptoSel = document.getElementById("empleado-filter-departamento");
+    const supSel = document.getElementById("empleado-filter-supervisor");
+    const ingresoDesde = document.getElementById("empleado-filter-ingreso-desde");
+    const ingresoHasta = document.getElementById("empleado-filter-ingreso-hasta");
+    const imssDesde = document.getElementById("empleado-filter-imss-desde");
+    const imssHasta = document.getElementById("empleado-filter-imss-hasta");
+    const clearBtn = document.getElementById("empleado-filter-clear");
+
+    if (!textInput) return;
+
+    const rows = () =>
+      document.querySelectorAll("tbody[data-empleados] tr[data-empleado-row]");
+
+    function applyFilters() {
+      const text = (textInput.value || "").toLowerCase().trim();
+      const estado = estadoSel.value || "";
+      const patronId = patronSel.value || "";
+      const sucursalId = sucursalSel.value || "";
+      const deptoId = deptoSel.value || "";
+      const supId = supSel.value || "";
+      const fIngDesde = parseDate(ingresoDesde.value);
+      const fIngHasta = parseDate(ingresoHasta.value);
+      const fImssDesde = parseDate(imssDesde.value);
+      const fImssHasta = parseDate(imssHasta.value);
+
+      rows().forEach((row) => {
+        const search = (row.dataset.search || "").toLowerCase();
+        const rowEstado = row.dataset.estado || "";
+        const rowPatron = row.dataset.patronId || "";
+        const rowSucursal = row.dataset.sucursalId || "";
+        const rowDepto = row.dataset.departamentoId || "";
+        const rowSup = row.dataset.supervisorId || "";
+        const fIng = parseDate(row.dataset.fechaIngreso || "");
+        const fImss = parseDate(row.dataset.fechaAltaImss || "");
+
+        let visible = true;
+
+        if (text && !search.includes(text)) visible = false;
+        if (estado && rowEstado !== estado) visible = false;
+        if (patronId && rowPatron !== patronId) visible = false;
+        if (sucursalId && rowSucursal !== sucursalId) visible = false;
+        if (deptoId && rowDepto !== deptoId) visible = false;
+        if (supId && rowSup !== supId) visible = false;
+
+        if (fIngDesde && (!fIng || fIng < fIngDesde)) visible = false;
+        if (fIngHasta && (!fIng || fIng > fIngHasta)) visible = false;
+        if (fImssDesde && (!fImss || fImss < fImssDesde)) visible = false;
+        if (fImssHasta && (!fImss || fImss > fImssHasta)) visible = false;
+
+        row.style.display = visible ? "" : "none";
+      });
+    }
+
+    [
+      textInput,
+      estadoSel,
+      patronSel,
+      sucursalSel,
+      deptoSel,
+      supSel,
+      ingresoDesde,
+      ingresoHasta,
+      imssDesde,
+      imssHasta,
+    ].forEach((el) => {
+      if (!el) return;
+      const evt = el.tagName === "INPUT" ? "input" : "change";
+      el.addEventListener(evt, applyFilters);
     });
 
-    /* ===================== Helpers generales ===================== */
+    if (clearBtn) {
+      clearBtn.addEventListener("click", () => {
+        textInput.value = "";
+        estadoSel.value = "";
+        patronSel.value = "";
+        sucursalSel.value = "";
+        deptoSel.value = "";
+        supSel.value = "";
+        ingresoDesde.value = "";
+        ingresoHasta.value = "";
+        imssDesde.value = "";
+        imssHasta.value = "";
+        applyFilters();
+      });
+    }
 
-    function handleCrudError(error, fallbackMessage) {
-        let message = fallbackMessage;
+    applyFilters();
+  });
 
-        if (error && error.errors) {
-            const firstKey = Object.keys(error.errors)[0];
-            if (firstKey && error.errors[firstKey] && error.errors[firstKey][0]) {
-                message = error.errors[firstKey][0];
-            }
-        } else if (error && error.message) {
-            message = error.message;
-        }
+  /* =================== Construcción de selects lookup =================== */
 
-        Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: message,
-            confirmButtonColor: '#4f46e5',
+  function buildLookupOptions(items, value, labelKey = "nombre") {
+    const opts = items
+      .map(
+        (item) =>
+          `<option value="${item.id}">${item[labelKey] || ""}</option>`
+      )
+      .join("");
+    const placeholder =
+      '<option value="">Selecciona una opción…</option>';
+    return placeholder + opts;
+  }
+
+  /* =================== Plantilla HTML del formulario =================== */
+
+  function empleadoFormHtml(initial) {
+    const patrones = asArray(lookups.patrones);
+    const sucursales = asArray(lookups.sucursales);
+    const departamentos = asArray(lookups.departamentos);
+    const supervisores = asArray(lookups.supervisores);
+
+    const supervisorLabel = (s) =>
+      [s.nombres, s.apellidoPaterno, s.apellidoMaterno].filter(Boolean).join(
+        " "
+      );
+
+    const supervisorOptions =
+      '<option value="">Sin supervisor</option>' +
+      supervisores
+        .map(
+          (s) =>
+            `<option value="${s.id}">${supervisorLabel(s)}</option>`
+        )
+        .join("");
+
+    const patronesOptions = buildLookupOptions(patrones, "id", "nombre");
+    const sucursalesOptions = buildLookupOptions(sucursales, "id", "nombre");
+    const deptosOptions = buildLookupOptions(departamentos, "id", "nombre");
+
+    const v = (field, def = "") =>
+      typeof initial[field] !== "undefined" && initial[field] !== null
+        ? initial[field]
+        : def;
+
+    return `
+    <div class="empleados-form-wrapper">
+      <!-- Sección 1 -->
+      <div class="empleados-section empleados-section-open" data-section>
+        <button type="button" class="empleados-section-header" data-section-toggle>
+          <span class="empleados-section-title">Datos personales y laborales</span>
+          <span class="empleados-section-subtitle">Nombre, estado y fechas principales</span>
+          <span class="empleados-section-arrow" aria-hidden="true">▾</span>
+        </button>
+        <div class="empleados-section-body">
+          <div class="empleados-grid-2">
+            <div>
+              <label class="empleados-label">Nombres <span class="empleados-required">*</span></label>
+              <input id="emp-nombres" type="text" class="empleados-input"
+                     placeholder="Tal como aparece en documentos oficiales"
+                     value="${v("nombres")}">
+            </div>
+            <div>
+              <label class="empleados-label">Apellido paterno <span class="empleados-required">*</span></label>
+              <input id="emp-apellidoPaterno" type="text" class="empleados-input"
+                     placeholder="Obligatorio"
+                     value="${v("apellidoPaterno")}">
+            </div>
+          </div>
+
+          <div class="empleados-grid-2">
+            <div>
+              <label class="empleados-label">Apellido materno</label>
+              <input id="emp-apellidoMaterno" type="text" class="empleados-input"
+                     placeholder="Opcional"
+                     value="${v("apellidoMaterno")}">
+            </div>
+            <div>
+              <label class="empleados-label">Número trabajador <span class="empleados-required">*</span></label>
+              <input id="emp-numeroTrabajador" type="text" class="empleados-input"
+                     placeholder="Debe ser único dentro de la empresa"
+                     value="${v("numero_trabajador")}">
+            </div>
+          </div>
+
+          <div class="empleados-grid-2">
+            <div>
+              <label class="empleados-label">Estado <span class="empleados-required">*</span></label>
+              <select id="emp-estado" class="empleados-select">
+                <option value="alta" ${v("estado", "alta") === "alta" ? "selected" : ""}>Alta</option>
+                <option value="baja" ${v("estado") === "baja" ? "selected" : ""}>Baja</option>
+              </select>
+            </div>
+            <div>
+              <label class="empleados-label">Fecha ingreso <span class="empleados-required">*</span></label>
+              <input id="emp-fechaIngreso" type="date" class="empleados-input"
+                     value="${v("fecha_ingreso", "")}">
+            </div>
+          </div>
+
+          <div class="empleados-grid-2">
+            <div>
+              <label class="empleados-label">Fecha baja</label>
+              <input id="emp-fechaBaja" type="date" class="empleados-input"
+                     value="${v("fecha_baja", "")}">
+              <p class="empleados-help">Sólo si el empleado ya está de baja.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sección 2 -->
+      <div class="empleados-section" data-section>
+        <button type="button" class="empleados-section-header" data-section-toggle>
+          <span class="empleados-section-title">Asignación (patrón, sucursal, departamento, supervisor)</span>
+          <span class="empleados-section-subtitle">Vincula al empleado con su estructura organizacional</span>
+          <span class="empleados-section-arrow" aria-hidden="true">▾</span>
+        </button>
+        <div class="empleados-section-body">
+          <div class="empleados-grid-2">
+            <div>
+              <label class="empleados-label">Patrón / empresa <span class="empleados-required">*</span></label>
+              <select id="emp-patron" class="empleados-select">
+                ${patronesOptions}
+              </select>
+            </div>
+            <div>
+              <label class="empleados-label">Sucursal <span class="empleados-required">*</span></label>
+              <select id="emp-sucursal" class="empleados-select">
+                ${sucursalesOptions}
+              </select>
+            </div>
+          </div>
+
+          <div class="empleados-grid-2">
+            <div>
+              <label class="empleados-label">Departamento <span class="empleados-required">*</span></label>
+              <select id="emp-departamento" class="empleados-select">
+                ${deptosOptions}
+              </select>
+            </div>
+            <div>
+              <label class="empleados-label">Supervisor</label>
+              <select id="emp-supervisor" class="empleados-select">
+                ${supervisorOptions}
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sección 3 -->
+      <div class="empleados-section" data-section>
+        <button type="button" class="empleados-section-header" data-section-toggle>
+          <span class="empleados-section-title">Datos IMSS</span>
+          <span class="empleados-section-subtitle">Información para seguridad social</span>
+          <span class="empleados-section-arrow" aria-hidden="true">▾</span>
+        </button>
+        <div class="empleados-section-body">
+          <div class="empleados-grid-2">
+            <div>
+              <label class="empleados-label">Número IMSS <span class="empleados-required">*</span></label>
+              <input id="emp-numeroImss" type="text" class="empleados-input"
+                     placeholder="Número de seguridad social"
+                     value="${v("numero_imss")}">
+            </div>
+            <div>
+              <label class="empleados-label">Registro patronal <span class="empleados-required">*</span></label>
+              <input id="emp-registroPatronal" type="text" class="empleados-input"
+                     placeholder="Registro patronal asociado"
+                     value="${v("registro_patronal")}">
+            </div>
+          </div>
+
+          <div class="empleados-grid-2">
+            <div>
+              <label class="empleados-label">Código postal</label>
+              <input id="emp-codigoPostal" type="text" class="empleados-input"
+                     placeholder="CP asociado al registro"
+                     value="${v("codigo_postal")}">
+            </div>
+            <div>
+              <label class="empleados-label">Fecha alta IMSS</label>
+              <input id="emp-fechaAltaImss" type="date" class="empleados-input"
+                     value="${v("fecha_alta_imss", "")}">
+            </div>
+          </div>
+
+          <div class="empleados-grid-2">
+            <div>
+              <label class="empleados-label">CURP <span class="empleados-required">*</span></label>
+              <input id="emp-curp" type="text" class="empleados-input"
+                     placeholder="18 caracteres"
+                     value="${v("curp")}">
+            </div>
+            <div>
+              <label class="empleados-label">RFC <span class="empleados-required">*</span></label>
+              <input id="emp-rfc" type="text" class="empleados-input"
+                     placeholder="Con homoclave"
+                     value="${v("rfc")}">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sección 4 -->
+      <div class="empleados-section" data-section>
+        <button type="button" class="empleados-section-header" data-section-toggle>
+          <span class="empleados-section-title">Datos bancarios y sueldos</span>
+          <span class="empleados-section-subtitle">Información opcional para pagos y facturación</span>
+          <span class="empleados-section-arrow" aria-hidden="true">▾</span>
+        </button>
+        <div class="empleados-section-body">
+          <div class="empleados-grid-2">
+            <div>
+              <label class="empleados-label">Banco</label>
+              <input id="emp-banco" type="text" class="empleados-input"
+                     placeholder="Nombre del banco"
+                     value="${v("banco")}">
+            </div>
+            <div>
+              <label class="empleados-label">Cuenta bancaria</label>
+              <input id="emp-cuentaBancaria" type="text" class="empleados-input"
+                     placeholder="Número de cuenta"
+                     value="${v("cuenta_bancaria")}">
+            </div>
+          </div>
+
+          <div class="empleados-grid-2">
+            <div>
+              <label class="empleados-label">Tarjeta</label>
+              <input id="emp-tarjeta" type="text" class="empleados-input"
+                     placeholder="Número de tarjeta"
+                     value="${v("tarjeta")}">
+            </div>
+            <div>
+              <label class="empleados-label">CLABE interbancaria</label>
+              <input id="emp-clabe" type="text" class="empleados-input"
+                     placeholder="18 dígitos"
+                     value="${v("clabe_interbancaria")}">
+            </div>
+          </div>
+
+          <div class="empleados-grid-2">
+            <div>
+              <label class="empleados-label">Sueldo diario bruto</label>
+              <input id="emp-sueldoBruto" type="number" step="0.01" class="empleados-input"
+                     placeholder="0.00"
+                     value="${v("sueldo_diario_bruto", "")}">
+            </div>
+            <div>
+              <label class="empleados-label">Sueldo diario neto</label>
+              <input id="emp-sueldoNeto" type="number" step="0.01" class="empleados-input"
+                     placeholder="0.00"
+                     value="${v("sueldo_diario_neto", "")}">
+            </div>
+          </div>
+
+          <div class="empleados-grid-2">
+            <div>
+              <label class="empleados-label">Salario diario IMSS</label>
+              <input id="emp-salarioImss" type="number" step="0.01" class="empleados-input"
+                     placeholder="0.00"
+                     value="${v("salario_diario_imss", "")}">
+            </div>
+            <div>
+              <label class="empleados-label">SDI</label>
+              <input id="emp-sdi" type="number" step="0.01" class="empleados-input"
+                     placeholder="0.00"
+                     value="${v("sdi", "")}">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  }
+
+  function initSectionToggles() {
+    document
+      .querySelectorAll(".empleados-section-header")
+      .forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const section = btn.closest("[data-section]");
+          if (!section) return;
+          section.classList.toggle("empleados-section-open");
         });
-    }
+      });
+  }
 
-    function buildSupervisorNombreCompleto(sup) {
-        const parts = [sup.nombres, sup.apellidoPaterno, sup.apellidoMaterno].filter(Boolean);
-        return parts.join(' ');
-    }
+  function collectEmpleadoFormValues(id) {
+    const getVal = (sel) =>
+      (document.getElementById(sel) || { value: "" }).value.trim();
 
-    /**
-     * Inicializa un buscador con lista visible y filtrable.
-     * - scopeEl: elemento raíz del modal (Swal.getHtmlContainer()).
-     * - name: string ('patron' | 'sucursal' | 'departamento' | 'supervisor').
-     * - items: array de registros.
-     * - selectedId: id preseleccionado (string|number|null).
-     */
-    function setupLookup(scopeEl, name, items, selectedId) {
-        const searchInput = scopeEl.querySelector(`[data-lookup-search="${name}"]`);
-        const listEl      = scopeEl.querySelector(`[data-lookup-list="${name}"]`);
-        if (!searchInput || !listEl) return;
-
-        // Si hay seleccionado, marcamos el data-selected-id inicial
-        if (selectedId != null && selectedId !== '') {
-            searchInput.dataset.selectedId = String(selectedId);
-        }
-
-        const getLabel = (item) => {
-            if (name === 'supervisor') {
-                return buildSupervisorNombreCompleto(item) || `(ID ${item.id})`;
-            }
-            return item.nombre || `(ID ${item.id})`;
-        };
-
-        const render = (query = '') => {
-            const q = query.toLowerCase().trim();
-            listEl.innerHTML = '';
-
-            items
-                .filter(it => {
-                    const label = getLabel(it).toLowerCase();
-                    return !q || label.includes(q);
-                })
-                .forEach(it => {
-                    const isActive =
-                        searchInput.dataset.selectedId &&
-                        String(searchInput.dataset.selectedId) === String(it.id);
-
-                    const btn = document.createElement('button');
-                    btn.type = 'button';
-                    btn.className =
-                        'w-full flex items-center justify-between px-3 py-1.5 text-sm rounded-md border ' +
-                        (isActive
-                            ? 'bg-indigo-50 border-indigo-400 text-indigo-700 font-semibold'
-                            : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50');
-                    btn.dataset.id = it.id;
-
-                    const spanLabel = document.createElement('span');
-                    spanLabel.textContent = getLabel(it);
-
-                    const spanId = document.createElement('span');
-                    spanId.className = 'ml-2 text-[11px] text-slate-400';
-                    spanId.textContent = `ID: ${it.id}`;
-
-                    btn.appendChild(spanLabel);
-                    btn.appendChild(spanId);
-
-                    btn.addEventListener('click', () => {
-                        searchInput.dataset.selectedId = String(it.id);
-                        searchInput.value = getLabel(it);
-                        render(q);
-                    });
-
-                    listEl.appendChild(btn);
-                });
-
-            if (!items.length) {
-                const empty = document.createElement('div');
-                empty.className = 'px-3 py-2 text-xs text-slate-400';
-                empty.textContent = 'Sin registros disponibles.';
-                listEl.appendChild(empty);
-            }
-        };
-
-        render();
-
-        searchInput.addEventListener('input', (e) => {
-            render(e.target.value);
-        });
-    }
-
-    function collectEmpleadoPayloadFromModal(isEdit = false, existing) {
-        const get = (id) => {
-            const el = document.getElementById(id);
-            return el ? el.value.trim() : '';
-        };
-
-        // Lookups seleccionados
-        const patronSearch      = document.querySelector('[data-lookup-search="patron"]');
-        const sucursalSearch    = document.querySelector('[data-lookup-search="sucursal"]');
-        const departamentoSearch= document.querySelector('[data-lookup-search="departamento"]');
-        const supervisorSearch  = document.querySelector('[data-lookup-search="supervisor"]');
-
-        const patronId       = patronSearch?.dataset.selectedId || '';
-        const sucursalId     = sucursalSearch?.dataset.selectedId || '';
-        const departamentoId = departamentoSearch?.dataset.selectedId || '';
-        const supervisorId   = supervisorSearch?.dataset.selectedId || '';
-
-        const payload = {
-            nombres: get('swal-nombres'),
-            apellidoPaterno: get('swal-apellidoPaterno'),
-            apellidoMaterno: get('swal-apellidoMaterno'),
-            numero_trabajador: get('swal-numero_trabajador'),
-            estado: get('swal-estado') || 'alta',
-
-            patron_id: patronId || null,
-            sucursal_id: sucursalId || null,
-            departamento_id: departamentoId || null,
-            supervisor_id: supervisorId || null,
-
-            fecha_ingreso: get('swal-fecha_ingreso') || null,
-            fecha_baja: get('swal-fecha_baja') || null,
-
-            numero_imss: get('swal-numero_imss'),
-            registro_patronal: get('swal-registro_patronal'),
-            codigo_postal: get('swal-codigo_postal'),
-            fecha_alta_imss: get('swal-fecha_alta_imss') || null,
-            curp: get('swal-curp'),
-            rfc: get('swal-rfc'),
-
-            cuenta_bancaria: get('swal-cuenta_bancaria'),
-            tarjeta: get('swal-tarjeta'),
-            clabe_interbancaria: get('swal-clabe_interbancaria'),
-            banco: get('swal-banco'),
-
-            sueldo_diario_bruto: get('swal-sueldo_diario_bruto'),
-            sueldo_diario_neto: get('swal-sueldo_diario_neto'),
-            salario_diario_imss: get('swal-salario_diario_imss'),
-            sdi: get('swal-sdi'),
-
-            empresa_facturar: get('swal-empresa_facturar'),
-            total_guardias_factura: get('swal-total_guardias_factura') || 0,
-            importe_factura_mensual: get('swal-importe_factura_mensual') || 0,
-        };
-
-        // Validaciones mínimas (nombre, apPaterno, número trabajador, patrón, sucursal, departamento, IMSS, CURP, RFC, registro patronal)
-        if (!payload.nombres || !payload.apellidoPaterno || !payload.numero_trabajador) {
-            Swal.showValidationMessage('Nombres, Apellido paterno y Número de trabajador son obligatorios.');
-            return false;
-        }
-        if (!payload.patron_id || !payload.sucursal_id || !payload.departamento_id) {
-            Swal.showValidationMessage('Debes seleccionar Patrón, Sucursal y Departamento.');
-            return false;
-        }
-        if (!payload.numero_imss || !payload.curp || !payload.rfc || !payload.registro_patronal) {
-            Swal.showValidationMessage('Número IMSS, Registro patronal, CURP y RFC son obligatorios.');
-            return false;
-        }
-
-        return payload;
-    }
-
-    /* ===================== Crear Empleado ===================== */
-
-    window.openCreateEmpleadoModal = async function () {
-        const { value: formValues } = await Swal.fire({
-            title: 'Nuevo empleado',
-            width: '900px',
-            html: `
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-left text-sm">
-                    <!-- Columna 1: Datos personales y laborales -->
-                    <div class="space-y-4">
-                        <div class="space-y-2">
-                            <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Datos personales</h3>
-                            <label class="block text-xs text-slate-600">
-                                Nombres
-                                <input id="swal-nombres" type="text"
-                                    class="mt-1 block w-full border rounded-lg px-2 py-1.5 text-sm border-slate-200 focus:ring-indigo-500 focus:border-indigo-500" />
-                            </label>
-                            <label class="block text-xs text-slate-600">
-                                Apellido paterno
-                                <input id="swal-apellidoPaterno" type="text"
-                                    class="mt-1 block w-full border rounded-lg px-2 py-1.5 text-sm border-slate-200 focus:ring-indigo-500 focus:border-indigo-500" />
-                            </label>
-                            <label class="block text-xs text-slate-600">
-                                Apellido materno
-                                <input id="swal-apellidoMaterno" type="text"
-                                    class="mt-1 block w-full border rounded-lg px-2 py-1.5 text-sm border-slate-200 focus:ring-indigo-500 focus:border-indigo-500" />
-                            </label>
-                        </div>
-
-                        <div class="space-y-2">
-                            <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Datos laborales</h3>
-                            <label class="block text-xs text-slate-600">
-                                Número trabajador
-                                <input id="swal-numero_trabajador" type="text"
-                                    class="mt-1 block w-full border rounded-lg px-2 py-1.5 text-sm border-slate-200 focus:ring-indigo-500 focus:border-indigo-500" />
-                            </label>
-
-                            <div class="grid grid-cols-2 gap-2">
-                                <label class="block text-xs text-slate-600">
-                                    Estado
-                                    <select id="swal-estado"
-                                        class="mt-1 block w-full border rounded-lg px-2 py-1.5 text-sm border-slate-200 focus:ring-indigo-500 focus:border-indigo-500">
-                                        <option value="alta" selected>Alta</option>
-                                        <option value="baja">Baja</option>
-                                    </select>
-                                </label>
-                                <label class="block text-xs text-slate-600">
-                                    Fecha ingreso
-                                    <input id="swal-fecha_ingreso" type="date"
-                                        class="mt-1 block w-full border rounded-lg px-2 py-1.5 text-sm border-slate-200 focus:ring-indigo-500 focus:border-indigo-500" />
-                                </label>
-                            </div>
-
-                            <label class="block text-xs text-slate-600">
-                                Fecha baja
-                                <input id="swal-fecha_baja" type="date"
-                                    class="mt-1 block w-full border rounded-lg px-2 py-1.5 text-sm border-slate-200 focus:ring-indigo-500 focus:border-indigo-500" />
-                            </label>
-                        </div>
-
-                        <div class="space-y-2">
-                            <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Asignación</h3>
-
-                            <div class="space-y-1">
-                                <label class="block text-xs text-slate-600">
-                                    Patrón (empresa)
-                                    <input type="text" data-lookup-search="patron"
-                                        placeholder="Buscar patrón..."
-                                        class="mt-1 block w-full border rounded-lg px-2 py-1.5 text-sm border-slate-200 focus:ring-indigo-500 focus:border-indigo-500" />
-                                </label>
-                                <div data-lookup-list="patron"
-                                    class="mt-1 max-h-32 overflow-y-auto border border-slate-200 rounded-lg bg-white space-y-1"></div>
-                            </div>
-
-                            <div class="space-y-1">
-                                <label class="block text-xs text-slate-600">
-                                    Sucursal
-                                    <input type="text" data-lookup-search="sucursal"
-                                        placeholder="Buscar sucursal..."
-                                        class="mt-1 block w-full border rounded-lg px-2 py-1.5 text-sm border-slate-200 focus:ring-indigo-500 focus:border-indigo-500" />
-                                </label>
-                                <div data-lookup-list="sucursal"
-                                    class="mt-1 max-h-32 overflow-y-auto border border-slate-200 rounded-lg bg-white space-y-1"></div>
-                            </div>
-
-                            <div class="space-y-1">
-                                <label class="block text-xs text-slate-600">
-                                    Departamento
-                                    <input type="text" data-lookup-search="departamento"
-                                        placeholder="Buscar departamento..."
-                                        class="mt-1 block w-full border rounded-lg px-2 py-1.5 text-sm border-slate-200 focus:ring-indigo-500 focus:border-indigo-500" />
-                                </label>
-                                <div data-lookup-list="departamento"
-                                    class="mt-1 max-h-32 overflow-y-auto border border-slate-200 rounded-lg bg-white space-y-1"></div>
-                            </div>
-
-                            <div class="space-y-1">
-                                <label class="block text-xs text-slate-600">
-                                    Supervisor
-                                    <input type="text" data-lookup-search="supervisor"
-                                        placeholder="Buscar supervisor..."
-                                        class="mt-1 block w-full border rounded-lg px-2 py-1.5 text-sm border-slate-200 focus:ring-indigo-500 focus:border-indigo-500" />
-                                </label>
-                                <div data-lookup-list="supervisor"
-                                    class="mt-1 max-h-32 overflow-y-auto border border-slate-200 rounded-lg bg-white space-y-1"></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Columna 2: IMSS, bancarios, facturación -->
-                    <div class="space-y-4">
-                        <div class="space-y-2">
-                            <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Datos IMSS</h3>
-                            <label class="block text-xs text-slate-600">
-                                Número IMSS
-                                <input id="swal-numero_imss" type="text"
-                                    class="mt-1 block w-full border rounded-lg px-2 py-1.5 text-sm border-slate-200 focus:ring-indigo-500 focus:border-indigo-500" />
-                            </label>
-                            <label class="block text-xs text-slate-600">
-                                Registro patronal
-                                <input id="swal-registro_patronal" type="text"
-                                    class="mt-1 block w-full border rounded-lg px-2 py-1.5 text-sm border-slate-200 focus:ring-indigo-500 focus:border-indigo-500" />
-                            </label>
-                            <div class="grid grid-cols-2 gap-2">
-                                <label class="block text-xs text-slate-600">
-                                    Código postal
-                                    <input id="swal-codigo_postal" type="text"
-                                        class="mt-1 block w-full border rounded-lg px-2 py-1.5 text-sm border-slate-200 focus:ring-indigo-500 focus:border-indigo-500" />
-                                </label>
-                                <label class="block text-xs text-slate-600">
-                                    Fecha alta IMSS
-                                    <input id="swal-fecha_alta_imss" type="date"
-                                        class="mt-1 block w-full border rounded-lg px-2 py-1.5 text-sm border-slate-200 focus:ring-indigo-500 focus:border-indigo-500" />
-                                </label>
-                            </div>
-                            <label class="block text-xs text-slate-600">
-                                CURP
-                                <input id="swal-curp" type="text"
-                                    class="mt-1 block w-full border rounded-lg px-2 py-1.5 text-sm border-slate-200 uppercase focus:ring-indigo-500 focus:border-indigo-500" />
-                            </label>
-                            <label class="block text-xs text-slate-600">
-                                RFC
-                                <input id="swal-rfc" type="text"
-                                    class="mt-1 block w-full border rounded-lg px-2 py-1.5 text-sm border-slate-200 uppercase focus:ring-indigo-500 focus:border-indigo-500" />
-                            </label>
-                        </div>
-
-                        <div class="space-y-2">
-                            <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Datos bancarios</h3>
-                            <label class="block text-xs text-slate-600">
-                                Banco
-                                <input id="swal-banco" type="text"
-                                    class="mt-1 block w-full border rounded-lg px-2 py-1.5 text-sm border-slate-200 focus:ring-indigo-500 focus:border-indigo-500" />
-                            </label>
-                            <label class="block text-xs text-slate-600">
-                                Cuenta bancaria
-                                <input id="swal-cuenta_bancaria" type="text"
-                                    class="mt-1 block w-full border rounded-lg px-2 py-1.5 text-sm border-slate-200 focus:ring-indigo-500 focus:border-indigo-500" />
-                            </label>
-                            <label class="block text-xs text-slate-600">
-                                Tarjeta
-                                <input id="swal-tarjeta" type="text"
-                                    class="mt-1 block w-full border rounded-lg px-2 py-1.5 text-sm border-slate-200 focus:ring-indigo-500 focus:border-indigo-500" />
-                            </label>
-                            <label class="block text-xs text-slate-600">
-                                CLABE interbancaria
-                                <input id="swal-clabe_interbancaria" type="text"
-                                    class="mt-1 block w-full border rounded-lg px-2 py-1.5 text-sm border-slate-200 focus:ring-indigo-500 focus:border-indigo-500" />
-                            </label>
-                        </div>
-
-                        <div class="space-y-2">
-                            <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Sueldos</h3>
-                            <div class="grid grid-cols-2 gap-2">
-                                <label class="block text-xs text-slate-600">
-                                    Sueldo diario bruto
-                                    <input id="swal-sueldo_diario_bruto" type="number" step="0.01"
-                                        class="mt-1 block w-full border rounded-lg px-2 py-1.5 text-sm border-slate-200 focus:ring-indigo-500 focus:border-indigo-500" />
-                                </label>
-                                <label class="block text-xs text-slate-600">
-                                    Sueldo diario neto
-                                    <input id="swal-sueldo_diario_neto" type="number" step="0.01"
-                                        class="mt-1 block w-full border rounded-lg px-2 py-1.5 text-sm border-slate-200 focus:ring-indigo-500 focus:border-indigo-500" />
-                                </label>
-                            </div>
-                            <div class="grid grid-cols-2 gap-2">
-                                <label class="block text-xs text-slate-600">
-                                    Salario diario IMSS
-                                    <input id="swal-salario_diario_imss" type="number" step="0.01"
-                                        class="mt-1 block w-full border rounded-lg px-2 py-1.5 text-sm border-slate-200 focus:ring-indigo-500 focus:border-indigo-500" />
-                                </label>
-                                <label class="block text-xs text-slate-600">
-                                    SDI
-                                    <input id="swal-sdi" type="number" step="0.01"
-                                        class="mt-1 block w-full border rounded-lg px-2 py-1.5 text-sm border-slate-200 focus:ring-indigo-500 focus:border-indigo-500" />
-                                </label>
-                            </div>
-                        </div>
-
-                        <div class="space-y-2">
-                            <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Facturación</h3>
-                            <label class="block text-xs text-slate-600">
-                                Empresa a facturar
-                                <input id="swal-empresa_facturar" type="text"
-                                    class="mt-1 block w-full border rounded-lg px-2 py-1.5 text-sm border-slate-200 focus:ring-indigo-500 focus:border-indigo-500" />
-                            </label>
-                            <div class="grid grid-cols-2 gap-2">
-                                <label class="block text-xs text-slate-600">
-                                    Total guardias factura
-                                    <input id="swal-total_guardias_factura" type="number" step="1" min="0"
-                                        class="mt-1 block w-full border rounded-lg px-2 py-1.5 text-sm border-slate-200 focus:ring-indigo-500 focus:border-indigo-500" />
-                                </label>
-                                <label class="block text-xs text-slate-600">
-                                    Importe factura mensual
-                                    <input id="swal-importe_factura_mensual" type="number" step="0.01" min="0"
-                                        class="mt-1 block w-full border rounded-lg px-2 py-1.5 text-sm border-slate-200 focus:ring-indigo-500 focus:border-indigo-500" />
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `,
-            focusConfirm: false,
-            showCancelButton: true,
-            confirmButtonText: 'Guardar',
-            cancelButtonText: 'Cancelar',
-            confirmButtonColor: '#4f46e5',
-            didOpen: () => {
-                const container = Swal.getHtmlContainer();
-                setupLookup(container, 'patron', lookups.patrones || [], null);
-                setupLookup(container, 'sucursal', lookups.sucursales || [], null);
-                setupLookup(container, 'departamento', lookups.departamentos || [], null);
-                setupLookup(container, 'supervisor', lookups.supervisores || [], null);
-            },
-            preConfirm: () => {
-                return collectEmpleadoPayloadFromModal(false, null);
-            },
-        });
-
-        if (!formValues) return;
-
-        try {
-            const response = await fetch(`${baseUrl}/empleados`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken,
-                    'Accept': 'application/json',
-                },
-                body: JSON.stringify(formValues),
-            });
-
-            if (!response.ok) {
-                throw await response.json();
-            }
-
-            const data = await response.json();
-
-            await Swal.fire({
-                icon: 'success',
-                title: 'Guardado',
-                text: data.message || 'Empleado registrado correctamente.',
-                confirmButtonColor: '#4f46e5',
-            });
-
-            window.location.reload();
-        } catch (error) {
-            handleCrudError(error, 'Ocurrió un error al registrar el empleado.');
-        }
+    const payload = {
+      id: id || null,
+      nombres: getVal("emp-nombres"),
+      apellidoPaterno: getVal("emp-apellidoPaterno"),
+      apellidoMaterno: getVal("emp-apellidoMaterno") || null,
+      numero_trabajador: getVal("emp-numeroTrabajador"),
+      estado: getVal("emp-estado") || "alta",
+      fecha_ingreso: getVal("emp-fechaIngreso"),
+      fecha_baja: getVal("emp-fechaBaja") || null,
+      patron_id: getVal("emp-patron"),
+      sucursal_id: getVal("emp-sucursal"),
+      departamento_id: getVal("emp-departamento"),
+      supervisor_id: getVal("emp-supervisor") || null,
+      numero_imss: getVal("emp-numeroImss"),
+      registro_patronal: getVal("emp-registroPatronal"),
+      codigo_postal: getVal("emp-codigoPostal") || null,
+      fecha_alta_imss: getVal("emp-fechaAltaImss") || null,
+      curp: getVal("emp-curp"),
+      rfc: getVal("emp-rfc"),
+      banco: getVal("emp-banco") || null,
+      cuenta_bancaria: getVal("emp-cuentaBancaria") || null,
+      tarjeta: getVal("emp-tarjeta") || null,
+      clabe_interbancaria: getVal("emp-clabe") || null,
+      sueldo_diario_bruto: getVal("emp-sueldoBruto") || null,
+      sueldo_diario_neto: getVal("emp-sueldoNeto") || null,
+      salario_diario_imss: getVal("emp-salarioImss") || null,
+      sdi: getVal("emp-sdi") || null,
     };
 
-    /* ===================== Editar Empleado ===================== */
+    // Validaciones rápidas de front
+    if (!payload.nombres) {
+      Swal.showValidationMessage("El campo Nombres es obligatorio.");
+      return null;
+    }
+    if (!payload.apellidoPaterno) {
+      Swal.showValidationMessage("El Apellido paterno es obligatorio.");
+      return null;
+    }
+    if (!payload.numero_trabajador) {
+      Swal.showValidationMessage(
+        "El Número de trabajador es obligatorio."
+      );
+      return null;
+    }
+    if (!payload.fecha_ingreso) {
+      Swal.showValidationMessage("La fecha de ingreso es obligatoria.");
+      return null;
+    }
+    if (!payload.patron_id) {
+      Swal.showValidationMessage("Debes seleccionar un patrón / empresa.");
+      return null;
+    }
+    if (!payload.sucursal_id) {
+      Swal.showValidationMessage("Debes seleccionar una sucursal.");
+      return null;
+    }
+    if (!payload.departamento_id) {
+      Swal.showValidationMessage("Debes seleccionar un departamento.");
+      return null;
+    }
+    if (!payload.numero_imss) {
+      Swal.showValidationMessage("El número IMSS es obligatorio.");
+      return null;
+    }
+    if (!payload.registro_patronal) {
+      Swal.showValidationMessage("El registro patronal es obligatorio.");
+      return null;
+    }
+    if (!payload.curp) {
+      Swal.showValidationMessage("La CURP es obligatoria.");
+      return null;
+    }
+    if (!payload.rfc) {
+      Swal.showValidationMessage("El RFC es obligatorio.");
+      return null;
+    }
 
-    window.openEditEmpleadoModal = async function (button) {
-        const empleado = {
-            id: button.dataset.id,
-            nombres: button.dataset.nombres || '',
-            apellidoPaterno: button.dataset.apellidoPaterno || '',
-            apellidoMaterno: button.dataset.apellidoMaterno || '',
-            numero_trabajador: button.dataset.numeroTrabajador || '',
-            estado: button.dataset.estado || 'alta',
-            fecha_ingreso: button.dataset.fechaIngreso || '',
-            fecha_baja: button.dataset.fechaBaja || '',
+    return payload;
+  }
 
-            patron_id: button.dataset.patronId || '',
-            sucursal_id: button.dataset.sucursalId || '',
-            departamento_id: button.dataset.departamentoId || '',
-            supervisor_id: button.dataset.supervisorId || '',
+  async function sendEmpleado(method, url, payload) {
+    const response = await fetch(url, {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-TOKEN": csrfToken,
+        Accept: "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
 
-            numero_imss: button.dataset.numeroImss || '',
-            registro_patronal: button.dataset.registroPatronal || '',
-            codigo_postal: button.dataset.codigoPostal || '',
-            fecha_alta_imss: button.dataset.fechaAltaImss || '',
-            curp: button.dataset.curp || '',
-            rfc: button.dataset.rfc || '',
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      throw data;
+    }
 
-            cuenta_bancaria: button.dataset.cuentaBancaria || '',
-            tarjeta: button.dataset.tarjeta || '',
-            clabe_interbancaria: button.dataset.clabeInterbancaria || '',
-            banco: button.dataset.banco || '',
+    return response.json();
+  }
 
-            sueldo_diario_bruto: button.dataset.sueldoDiarioBruto || '',
-            sueldo_diario_neto: button.dataset.sueldoDiarioNeto || '',
-            salario_diario_imss: button.dataset.salarioDiarioImss || '',
-            sdi: button.dataset.sdi || '',
+  /* =================== Crear =================== */
 
-            empresa_facturar: button.dataset.empresaFacturar || '',
-            total_guardias_factura: button.dataset.totalGuardiasFactura || '',
-            importe_factura_mensual: button.dataset.importeFacturaMensual || '',
+  window.openCreateEmpleadoModal = function () {
+    Swal.fire({
+      title: "Nuevo empleado",
+      html: empleadoFormHtml({}),
+      width: "90%",
+      maxWidth: 1100,
+      showCloseButton: true,
+      showCancelButton: true,
+      confirmButtonText: "Guardar",
+      cancelButtonText: "Cancelar",
+      reverseButtons: true,
+      focusConfirm: false,
+      customClass: {
+        popup: "empleados-swal-popup",
+        confirmButton: "empleados-swal-confirm",
+        cancelButton: "empleados-swal-cancel",
+      },
+      didOpen: () => {
+        initSectionToggles();
+      },
+      preConfirm: () => {
+        const payload = collectEmpleadoFormValues(null);
+        if (!payload) return false;
+
+        Swal.showLoading();
+
+        return sendEmpleado("POST", `${baseUrl}/empleados`, payload)
+          .then((data) => {
+            return data;
+          })
+          .catch((error) => {
+            handleCrudError(error, "Error al registrar el empleado.");
+            return false;
+          });
+      },
+    }).then((result) => {
+      if (!result.isConfirmed || !result.value) return;
+      Swal.fire({
+        icon: "success",
+        title: "Guardado",
+        text: "Empleado registrado correctamente.",
+        confirmButtonColor: "#4f46e5",
+      }).then(() => window.location.reload());
+    });
+  };
+
+  /* =================== Editar =================== */
+
+  window.openEditEmpleadoModal = function (btn) {
+    const dataset = btn.dataset || {};
+    const initial = {
+      id: dataset.id,
+      nombres: dataset.nombres || "",
+      apellidoPaterno: dataset.apellidoPaterno || "",
+      apellidoMaterno: dataset.apellidoMaterno || "",
+      numero_trabajador: dataset.numeroTrabajador || "",
+      estado: dataset.estado || "alta",
+      fecha_ingreso: dataset.fechaIngreso || "",
+      fecha_baja: dataset.fechaBaja || "",
+      patron_id: dataset.patronId || "",
+      sucursal_id: dataset.sucursalId || "",
+      departamento_id: dataset.departamentoId || "",
+      supervisor_id: dataset.supervisorId || "",
+      numero_imss: dataset.numeroImss || "",
+      registro_patronal: dataset.registroPatronal || "",
+      codigo_postal: dataset.codigoPostal || "",
+      fecha_alta_imss: dataset.fechaAltaImss || "",
+      curp: dataset.curp || "",
+      rfc: dataset.rfc || "",
+      banco: dataset.banco || "",
+      cuenta_bancaria: dataset.cuentaBancaria || "",
+      tarjeta: dataset.tarjeta || "",
+      clabe_interbancaria: dataset.clabe || "",
+      sueldo_diario_bruto: dataset.sueldoBruto || "",
+      sueldo_diario_neto: dataset.sueldoNeto || "",
+      salario_diario_imss: dataset.salarioImss || "",
+      sdi: dataset.sdi || "",
+    };
+
+    Swal.fire({
+      title: "Editar empleado",
+      html: empleadoFormHtml(initial),
+      width: "90%",
+      maxWidth: 1100,
+      showCloseButton: true,
+      showCancelButton: true,
+      confirmButtonText: "Actualizar",
+      cancelButtonText: "Cancelar",
+      reverseButtons: true,
+      focusConfirm: false,
+      customClass: {
+        popup: "empleados-swal-popup",
+        confirmButton: "empleados-swal-confirm",
+        cancelButton: "empleados-swal-cancel",
+      },
+      didOpen: () => {
+        initSectionToggles();
+
+        // Seleccionar valores de combos
+        const setVal = (id, val) => {
+          const el = document.getElementById(id);
+          if (el && val) el.value = val;
         };
+        setVal("emp-patron", initial.patron_id);
+        setVal("emp-sucursal", initial.sucursal_id);
+        setVal("emp-departamento", initial.departamento_id);
+        setVal("emp-supervisor", initial.supervisor_id);
+      },
+      preConfirm: () => {
+        const payload = collectEmpleadoFormValues(initial.id);
+        if (!payload) return false;
 
-        const { value: formValues } = await Swal.fire({
-            title: 'Editar empleado',
-            width: '900px',
-            html: `
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-left text-sm">
-                    <!-- Columna 1 -->
-                    <div class="space-y-4">
-                        <div class="space-y-2">
-                            <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Datos personales</h3>
-                            <label class="block text-xs text-slate-600">
-                                Nombres
-                                <input id="swal-nombres" type="text"
-                                    value="${empleado.nombres}"
-                                    class="mt-1 block w-full border rounded-lg px-2 py-1.5 text-sm border-slate-200 focus:ring-indigo-500 focus:border-indigo-500" />
-                            </label>
-                            <label class="block text-xs text-slate-600">
-                                Apellido paterno
-                                <input id="swal-apellidoPaterno" type="text"
-                                    value="${empleado.apellidoPaterno}"
-                                    class="mt-1 block w-full border rounded-lg px-2 py-1.5 text-sm border-slate-200 focus:ring-indigo-500 focus:border-indigo-500" />
-                            </label>
-                            <label class="block text-xs text-slate-600">
-                                Apellido materno
-                                <input id="swal-apellidoMaterno" type="text"
-                                    value="${empleado.apellidoMaterno}"
-                                    class="mt-1 block w-full border rounded-lg px-2 py-1.5 text-sm border-slate-200 focus:ring-indigo-500 focus:border-indigo-500" />
-                            </label>
-                        </div>
+        Swal.showLoading();
 
-                        <div class="space-y-2">
-                            <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Datos laborales</h3>
-                            <label class="block text-xs text-slate-600">
-                                Número trabajador
-                                <input id="swal-numero_trabajador" type="text"
-                                    value="${empleado.numero_trabajador}"
-                                    class="mt-1 block w-full border rounded-lg px-2 py-1.5 text-sm border-slate-200 focus:ring-indigo-500 focus:border-indigo-500" />
-                            </label>
+        return sendEmpleado(
+          "PUT",
+          `${baseUrl}/empleados/${initial.id}`,
+          payload
+        )
+          .then((data) => data)
+          .catch((error) => {
+            handleCrudError(error, "Error al actualizar el empleado.");
+            return false;
+          });
+      },
+    }).then((result) => {
+      if (!result.isConfirmed || !result.value) return;
+      Swal.fire({
+        icon: "success",
+        title: "Actualizado",
+        text: "Empleado actualizado correctamente.",
+        confirmButtonColor: "#4f46e5",
+      }).then(() => window.location.reload());
+    });
+  };
 
-                            <div class="grid grid-cols-2 gap-2">
-                                <label class="block text-xs text-slate-600">
-                                    Estado
-                                    <select id="swal-estado"
-                                        class="mt-1 block w-full border rounded-lg px-2 py-1.5 text-sm border-slate-200 focus:ring-indigo-500 focus:border-indigo-500">
-                                        <option value="alta" ${empleado.estado === 'alta' ? 'selected' : ''}>Alta</option>
-                                        <option value="baja" ${empleado.estado === 'baja' ? 'selected' : ''}>Baja</option>
-                                    </select>
-                                </label>
-                                <label class="block text-xs text-slate-600">
-                                    Fecha ingreso
-                                    <input id="swal-fecha_ingreso" type="date"
-                                        value="${empleado.fecha_ingreso}"
-                                        class="mt-1 block w-full border rounded-lg px-2 py-1.5 text-sm border-slate-200 focus:ring-indigo-500 focus:border-indigo-500" />
-                                </label>
-                            </div>
+  /* =================== Ver (solo lectura) =================== */
 
-                            <label class="block text-xs text-slate-600">
-                                Fecha baja
-                                <input id="swal-fecha_baja" type="date"
-                                    value="${empleado.fecha_baja}"
-                                    class="mt-1 block w-full border rounded-lg px-2 py-1.5 text-sm border-slate-200 focus:ring-indigo-500 focus:border-indigo-500" />
-                            </label>
-                        </div>
+  window.openShowEmpleadoModal = function (btn) {
+    const d = btn.dataset || {};
+    const supervisor =
+      d.supervisorNombre && d.supervisorNombre.trim().length
+        ? d.supervisorNombre
+        : "—";
 
-                        <div class="space-y-2">
-                            <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Asignación</h3>
+    const html = `
+      <div class="empleados-form-wrapper empleados-view-wrapper">
+        <div class="empleados-section empleados-section-open" data-section>
+          <div class="empleados-section-header empleados-section-header-static">
+            <span class="empleados-section-title">Datos generales</span>
+            <span class="empleados-section-subtitle">Vista rápida del empleado</span>
+          </div>
+          <div class="empleados-section-body">
+            <div class="empleados-grid-2">
+              <div>
+                <p class="empleados-view-label">Nombre completo</p>
+                <p class="empleados-view-value">${d.nombres || ""} ${d.apellidoPaterno || ""} ${d.apellidoMaterno || ""}</p>
+              </div>
+              <div>
+                <p class="empleados-view-label">Número trabajador</p>
+                <p class="empleados-view-value">${d.numeroTrabajador || "—"}</p>
+              </div>
+            </div>
+            <div class="empleados-grid-2">
+              <div>
+                <p class="empleados-view-label">Estado</p>
+                <p class="empleados-view-value">${(d.estado || "").toUpperCase()}</p>
+              </div>
+              <div>
+                <p class="empleados-view-label">Fechas</p>
+                <p class="empleados-view-value">
+                  Ingreso: ${d.fechaIngreso || "—"} · Baja: ${d.fechaBaja || "—"}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
 
-                            <div class="space-y-1">
-                                <label class="block text-xs text-slate-600">
-                                    Patrón (empresa)
-                                    <input type="text" data-lookup-search="patron"
-                                        data-selected-id="${empleado.patron_id || ''}"
-                                        placeholder="Buscar patrón..."
-                                        class="mt-1 block w-full border rounded-lg px-2 py-1.5 text-sm border-slate-200 focus:ring-indigo-500 focus:border-indigo-500" />
-                                </label>
-                                <div data-lookup-list="patron"
-                                    class="mt-1 max-h-32 overflow-y-auto border border-slate-200 rounded-lg bg-white space-y-1"></div>
-                            </div>
+        <div class="empleados-section empleados-section-open" data-section>
+          <div class="empleados-section-header empleados-section-header-static">
+            <span class="empleados-section-title">Relación laboral</span>
+          </div>
+          <div class="empleados-section-body">
+            <div class="empleados-grid-2">
+              <div>
+                <p class="empleados-view-label">Patrón / empresa</p>
+                <p class="empleados-view-value">${d.patronNombre || "—"}</p>
+              </div>
+              <div>
+                <p class="empleados-view-label">Sucursal</p>
+                <p class="empleados-view-value">${d.sucursalNombre || "—"}</p>
+              </div>
+            </div>
+            <div class="empleados-grid-2">
+              <div>
+                <p class="empleados-view-label">Departamento</p>
+                <p class="empleados-view-value">${d.departamentoNombre || "—"}</p>
+              </div>
+              <div>
+                <p class="empleados-view-label">Supervisor</p>
+                <p class="empleados-view-value">${supervisor}</p>
+              </div>
+            </div>
+          </div>
+        </div>
 
-                            <div class="space-y-1">
-                                <label class="block text-xs text-slate-600">
-                                    Sucursal
-                                    <input type="text" data-lookup-search="sucursal"
-                                        data-selected-id="${empleado.sucursal_id || ''}"
-                                        placeholder="Buscar sucursal..."
-                                        class="mt-1 block w-full border rounded-lg px-2 py-1.5 text-sm border-slate-200 focus:ring-indigo-500 focus:border-indigo-500" />
-                                </label>
-                                <div data-lookup-list="sucursal"
-                                    class="mt-1 max-h-32 overflow-y-auto border border-slate-200 rounded-lg bg-white space-y-1"></div>
-                            </div>
+        <div class="empleados-section empleados-section-open" data-section>
+          <div class="empleados-section-header empleados-section-header-static">
+            <span class="empleados-section-title">IMSS y fiscales</span>
+          </div>
+          <div class="empleados-section-body">
+            <div class="empleados-grid-2">
+              <div>
+                <p class="empleados-view-label">Número IMSS</p>
+                <p class="empleados-view-value">${d.numeroImss || "—"}</p>
+              </div>
+              <div>
+                <p class="empleados-view-label">Registro patronal</p>
+                <p class="empleados-view-value">${d.registroPatronal || "—"}</p>
+              </div>
+            </div>
+            <div class="empleados-grid-2">
+              <div>
+                <p class="empleados-view-label">CURP</p>
+                <p class="empleados-view-value">${d.curp || "—"}</p>
+              </div>
+              <div>
+                <p class="empleados-view-label">RFC</p>
+                <p class="empleados-view-value">${d.rfc || "—"}</p>
+              </div>
+            </div>
+            <div class="empleados-grid-2">
+              <div>
+                <p class="empleados-view-label">Alta IMSS</p>
+                <p class="empleados-view-value">${d.fechaAltaImss || "—"}</p>
+              </div>
+              <div>
+                <p class="empleados-view-label">Código postal</p>
+                <p class="empleados-view-value">${d.codigoPostal || "—"}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
 
-                            <div class="space-y-1">
-                                <label class="block text-xs text-slate-600">
-                                    Departamento
-                                    <input type="text" data-lookup-search="departamento"
-                                        data-selected-id="${empleado.departamento_id || ''}"
-                                        placeholder="Buscar departamento..."
-                                        class="mt-1 block w-full border rounded-lg px-2 py-1.5 text-sm border-slate-200 focus:ring-indigo-500 focus:border-indigo-500" />
-                                </label>
-                                <div data-lookup-list="departamento"
-                                    class="mt-1 max-h-32 overflow-y-auto border border-slate-200 rounded-lg bg-white space-y-1"></div>
-                            </div>
+    Swal.fire({
+      title: "Detalle de empleado",
+      html,
+      width: "80%",
+      maxWidth: 900,
+      showCloseButton: true,
+      showConfirmButton: true,
+      confirmButtonText: "Cerrar",
+      customClass: {
+        popup: "empleados-swal-popup",
+        confirmButton: "empleados-swal-cancel",
+      },
+    });
+  };
 
-                            <div class="space-y-1">
-                                <label class="block text-xs text-slate-600">
-                                    Supervisor
-                                    <input type="text" data-lookup-search="supervisor"
-                                        data-selected-id="${empleado.supervisor_id || ''}"
-                                        placeholder="Buscar supervisor..."
-                                        class="mt-1 block w-full border rounded-lg px-2 py-1.5 text-sm border-slate-200 focus:ring-indigo-500 focus:border-indigo-500" />
-                                </label>
-                                <div data-lookup-list="supervisor"
-                                    class="mt-1 max-h-32 overflow-y-auto border border-slate-200 rounded-lg bg-white space-y-1"></div>
-                            </div>
-                        </div>
-                    </div>
+  /* =================== Cambiar estado rápido =================== */
 
-                    <!-- Columna 2 -->
-                    <div class="space-y-4">
-                        <div class="space-y-2">
-                            <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Datos IMSS</h3>
-                            <label class="block text-xs text-slate-600">
-                                Número IMSS
-                                <input id="swal-numero_imss" type="text"
-                                    value="${empleado.numero_imss}"
-                                    class="mt-1 block w-full border rounded-lg px-2 py-1.5 text-sm border-slate-200 focus:ring-indigo-500 focus:border-indigo-500" />
-                            </label>
-                            <label class="block text-xs text-slate-600">
-                                Registro patronal
-                                <input id="swal-registro_patronal" type="text"
-                                    value="${empleado.registro_patronal}"
-                                    class="mt-1 block w-full border rounded-lg px-2 py-1.5 text-sm border-slate-200 focus:ring-indigo-500 focus:border-indigo-500" />
-                            </label>
-                            <div class="grid grid-cols-2 gap-2">
-                                <label class="block text-xs text-slate-600">
-                                    Código postal
-                                    <input id="swal-codigo_postal" type="text"
-                                        value="${empleado.codigo_postal}"
-                                        class="mt-1 block w-full border rounded-lg px-2 py-1.5 text-sm border-slate-200 focus:ring-indigo-500 focus:border-indigo-500" />
-                                </label>
-                                <label class="block text-xs text-slate-600">
-                                    Fecha alta IMSS
-                                    <input id="swal-fecha_alta_imss" type="date"
-                                        value="${empleado.fecha_alta_imss}"
-                                        class="mt-1 block w-full border rounded-lg px-2 py-1.5 text-sm border-slate-200 focus:ring-indigo-500 focus:border-indigo-500" />
-                                </label>
-                            </div>
-                            <label class="block text-xs text-slate-600">
-                                CURP
-                                <input id="swal-curp" type="text"
-                                    value="${empleado.curp}"
-                                    class="mt-1 block w-full border rounded-lg px-2 py-1.5 text-sm border-slate-200 uppercase focus:ring-indigo-500 focus:border-indigo-500" />
-                            </label>
-                            <label class="block text-xs text-slate-600">
-                                RFC
-                                <input id="swal-rfc" type="text"
-                                    value="${empleado.rfc}"
-                                    class="mt-1 block w-full border rounded-lg px-2 py-1.5 text-sm border-slate-200 uppercase focus:ring-indigo-500 focus:border-indigo-500" />
-                            </label>
-                        </div>
-
-                        <div class="space-y-2">
-                            <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Datos bancarios</h3>
-                            <label class="block text-xs text-slate-600">
-                                Banco
-                                <input id="swal-banco" type="text"
-                                    value="${empleado.banco}"
-                                    class="mt-1 block w-full border rounded-lg px-2 py-1.5 text-sm border-slate-200 focus:ring-indigo-500 focus:border-indigo-500" />
-                            </label>
-                            <label class="block text-xs text-slate-600">
-                                Cuenta bancaria
-                                <input id="swal-cuenta_bancaria" type="text"
-                                    value="${empleado.cuenta_bancaria}"
-                                    class="mt-1 block w-full border rounded-lg px-2 py-1.5 text-sm border-slate-200 focus:ring-indigo-500 focus:border-indigo-500" />
-                            </label>
-                            <label class="block text-xs text-slate-600">
-                                Tarjeta
-                                <input id="swal-tarjeta" type="text"
-                                    value="${empleado.tarjeta}"
-                                    class="mt-1 block w-full border rounded-lg px-2 py-1.5 text-sm border-slate-200 focus:ring-indigo-500 focus:border-indigo-500" />
-                            </label>
-                            <label class="block text-xs text-slate-600">
-                                CLABE interbancaria
-                                <input id="swal-clabe_interbancaria" type="text"
-                                    value="${empleado.clabe_interbancaria}"
-                                    class="mt-1 block w-full border rounded-lg px-2 py-1.5 text-sm border-slate-200 focus:ring-indigo-500 focus:border-indigo-500" />
-                            </label>
-                        </div>
-
-                        <div class="space-y-2">
-                            <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Sueldos</h3>
-                            <div class="grid grid-cols-2 gap-2">
-                                <label class="block text-xs text-slate-600">
-                                    Sueldo diario bruto
-                                    <input id="swal-sueldo_diario_bruto" type="number" step="0.01"
-                                        value="${empleado.sueldo_diario_bruto}"
-                                        class="mt-1 block w-full border rounded-lg px-2 py-1.5 text-sm border-slate-200 focus:ring-indigo-500 focus:border-indigo-500" />
-                                </label>
-                                <label class="block text-xs text-slate-600">
-                                    Sueldo diario neto
-                                    <input id="swal-sueldo_diario_neto" type="number" step="0.01"
-                                        value="${empleado.sueldo_diario_neto}"
-                                        class="mt-1 block w-full border rounded-lg px-2 py-1.5 text-sm border-slate-200 focus:ring-indigo-500 focus:border-indigo-500" />
-                                </label>
-                            </div>
-                            <div class="grid grid-cols-2 gap-2">
-                                <label class="block text-xs text-slate-600">
-                                    Salario diario IMSS
-                                    <input id="swal-salario_diario_imss" type="number" step="0.01"
-                                        value="${empleado.salario_diario_imss}"
-                                        class="mt-1 block w-full border rounded-lg px-2 py-1.5 text-sm border-slate-200 focus:ring-indigo-500 focus:border-indigo-500" />
-                                </label>
-                                <label class="block text-xs text-slate-600">
-                                    SDI
-                                    <input id="swal-sdi" type="number" step="0.01"
-                                        value="${empleado.sdi}"
-                                        class="mt-1 block w-full border rounded-lg px-2 py-1.5 text-sm border-slate-200 focus:ring-indigo-500 focus:border-indigo-500" />
-                                </label>
-                            </div>
-                        </div>
-
-                        <div class="space-y-2">
-                            <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Facturación</h3>
-                            <label class="block text-xs text-slate-600">
-                                Empresa a facturar
-                                <input id="swal-empresa_facturar" type="text"
-                                    value="${empleado.empresa_facturar}"
-                                    class="mt-1 block w-full border rounded-lg px-2 py-1.5 text-sm border-slate-200 focus:ring-indigo-500 focus:border-indigo-500" />
-                            </label>
-                            <div class="grid grid-cols-2 gap-2">
-                                <label class="block text-xs text-slate-600">
-                                    Total guardias factura
-                                    <input id="swal-total_guardias_factura" type="number" step="1" min="0"
-                                        value="${empleado.total_guardias_factura}"
-                                        class="mt-1 block w-full border rounded-lg px-2 py-1.5 text-sm border-slate-200 focus:ring-indigo-500 focus:border-indigo-500" />
-                                </label>
-                                <label class="block text-xs text-slate-600">
-                                    Importe factura mensual
-                                    <input id="swal-importe_factura_mensual" type="number" step="0.01" min="0"
-                                        value="${empleado.importe_factura_mensual}"
-                                        class="mt-1 block w-full border rounded-lg px-2 py-1.5 text-sm border-slate-200 focus:ring-indigo-500 focus:border-indigo-500" />
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `,
-            focusConfirm: false,
-            showCancelButton: true,
-            confirmButtonText: 'Actualizar',
-            cancelButtonText: 'Cancelar',
-            confirmButtonColor: '#4f46e5',
-            didOpen: () => {
-                const container = Swal.getHtmlContainer();
-
-                const patronSelectedId =
-                    container.querySelector('[data-lookup-search="patron"]')?.dataset.selectedId || empleado.patron_id || null;
-                const sucursalSelectedId =
-                    container.querySelector('[data-lookup-search="sucursal"]')?.dataset.selectedId || empleado.sucursal_id || null;
-                const deptoSelectedId =
-                    container.querySelector('[data-lookup-search="departamento"]')?.dataset.selectedId || empleado.departamento_id || null;
-                const supervisorSelectedId =
-                    container.querySelector('[data-lookup-search="supervisor"]')?.dataset.selectedId || empleado.supervisor_id || null;
-
-                setupLookup(container, 'patron', lookups.patrones || [], patronSelectedId);
-                setupLookup(container, 'sucursal', lookups.sucursales || [], sucursalSelectedId);
-                setupLookup(container, 'departamento', lookups.departamentos || [], deptoSelectedId);
-                setupLookup(container, 'supervisor', lookups.supervisores || [], supervisorSelectedId);
-            },
-            preConfirm: () => {
-                return collectEmpleadoPayloadFromModal(true, empleado);
-            },
-        });
-
-        if (!formValues) return;
-
-        try {
-            const response = await fetch(`${baseUrl}/empleados/${empleado.id}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken,
-                    'Accept': 'application/json',
-                },
-                body: JSON.stringify(formValues),
-            });
-
-            if (!response.ok) {
-                throw await response.json();
-            }
-
-            const data = await response.json();
-
-            await Swal.fire({
-                icon: 'success',
-                title: 'Actualizado',
-                text: data.message || 'Empleado actualizado correctamente.',
-                confirmButtonColor: '#4f46e5',
-            });
-
-            window.location.reload();
-        } catch (error) {
-            handleCrudError(error, 'Ocurrió un error al actualizar el empleado.');
+  window.openToggleEstadoEmpleado = function (id, currentEstado) {
+    Swal.fire({
+      title: "Cambiar estado",
+      text: "Puedes activar o dar de baja al empleado rápidamente.",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Guardar",
+      cancelButtonText: "Cancelar",
+      reverseButtons: true,
+      showCloseButton: true,
+      html: `
+        <div class="mt-3">
+          <label class="empleados-label mb-2 block">Estado</label>
+          <select id="emp-toggle-estado" class="empleados-select w-full">
+            <option value="alta" ${currentEstado === "alta" ? "selected" : ""}>Alta</option>
+            <option value="baja" ${currentEstado === "baja" ? "selected" : ""}>Baja</option>
+          </select>
+        </div>
+      `,
+      preConfirm: () => {
+        const sel = document.getElementById("emp-toggle-estado");
+        if (!sel) return false;
+        const nuevo = sel.value;
+        if (!nuevo) {
+          Swal.showValidationMessage("Selecciona un estado.");
+          return false;
         }
-    };
 
-    /* ===================== Eliminar Empleado ===================== */
+        Swal.showLoading();
 
-    window.confirmDeleteEmpleado = async function (id) {
-        const result = await Swal.fire({
-            title: '¿Eliminar empleado?',
-            text: 'Esta acción no se puede deshacer.',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonText: 'Sí, eliminar',
-            cancelButtonText: 'Cancelar',
-            confirmButtonColor: '#dc2626',
+        return fetch(`${baseUrl}/empleados/${id}/estado`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-TOKEN": csrfToken,
+            Accept: "application/json",
+          },
+          body: JSON.stringify({ estado: nuevo }),
+        })
+          .then((res) => {
+            if (!res.ok) return res.json().then((d) => Promise.reject(d));
+            return res.json();
+          })
+          .catch((err) => {
+            handleCrudError(err, "No se pudo actualizar el estado.");
+            return false;
+          });
+      },
+    }).then((result) => {
+      if (!result.isConfirmed || !result.value) return;
+      Swal.fire({
+        icon: "success",
+        title: "Estado actualizado",
+        confirmButtonColor: "#4f46e5",
+      }).then(() => window.location.reload());
+    });
+  };
+
+  /* =================== Eliminar =================== */
+
+  window.confirmDeleteEmpleado = function (id) {
+    Swal.fire({
+      title: "¿Eliminar empleado?",
+      text: "Esta acción no se puede deshacer.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Sí, eliminar",
+      cancelButtonText: "Cancelar",
+      confirmButtonColor: "#dc2626",
+      reverseButtons: true,
+      showCloseButton: true,
+    }).then((result) => {
+      if (!result.isConfirmed) return;
+
+      Swal.fire({
+        title: "Eliminando",
+        text: "Por favor espera…",
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading(),
+      });
+
+      fetch(`${baseUrl}/empleados/${id}`, {
+        method: "DELETE",
+        headers: {
+          "X-CSRF-TOKEN": csrfToken,
+          Accept: "application/json",
+        },
+      })
+        .then((res) => {
+          if (!res.ok) return res.json().then((d) => Promise.reject(d));
+          return res.json();
+        })
+        .then(() => {
+          Swal.fire({
+            icon: "success",
+            title: "Eliminado",
+            text: "Empleado eliminado correctamente.",
+            confirmButtonColor: "#4f46e5",
+          }).then(() => window.location.reload());
+        })
+        .catch((err) => {
+          Swal.close();
+          showErrorAlert(
+            (err && err.message) ||
+              "Ocurrió un error al eliminar el empleado."
+          );
         });
-
-        if (!result.isConfirmed) return;
-
-        try {
-            const response = await fetch(`${baseUrl}/empleados/${id}`, {
-                method: 'DELETE',
-                headers: {
-                    'X-CSRF-TOKEN': csrfToken,
-                    'Accept': 'application/json',
-                },
-            });
-
-            if (!response.ok) {
-                throw await response.json();
-            }
-
-            const data = await response.json();
-
-            await Swal.fire({
-                icon: 'success',
-                title: 'Eliminado',
-                text: data.message || 'Empleado eliminado correctamente.',
-                confirmButtonColor: '#4f46e5',
-            });
-
-            window.location.reload();
-        } catch (error) {
-            handleCrudError(error, 'Ocurrió un error al eliminar el empleado.');
-        }
-    };
+    });
+  };
 })();

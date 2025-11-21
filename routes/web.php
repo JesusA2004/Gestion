@@ -32,6 +32,9 @@ Route::middleware('auth')->group(function () {
 
     Route::resource('/departamentos', DepartamentoController::class);
 
+    Route::patch('/empleados/{empleado}/estado', [EmpleadoController::class, 'cambiarEstado'])
+    ->name('empleados.cambiarEstado');
+
     Route::resource('/empleados', EmpleadoController::class);
 
 });
