@@ -1,0 +1,62 @@
+/* resources/css/sucursals.css */
+
+/* Animación y hover de filas */
+.sucursal-row {
+  transition:
+    background-color 150ms ease-out,
+    transform 150ms ease-out,
+    box-shadow 150ms ease-out;
+}
+
+.sucursal-row:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+}
+
+.sucursal-row button:hover {
+  box-shadow:
+    0 0 0 1px rgba(15, 23, 42, 0.06),
+    0 10px 25px rgba(15, 23, 42, 0.12);
+}
+
+@keyframes sucursalFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+tbody[data-sucursals] tr {
+  animation: sucursalFadeIn 220ms ease-out;
+}
+
+/* Altura cómoda de filas en desktop */
+@media (min-width: 1024px) {
+  .sucursal-row td {
+    padding-top: 1.25rem;
+    padding-bottom: 1.25rem;
+  }
+}
+
+/* Shell del módulo: ahora ocupa casi todo el ancho útil */
+.sucursals-shell {
+  width: 100%;
+  max-width: 90rem; /* ~1440px, casi full HD */
+}
+
+/* Botones en responsive: ocupar bien espacio */
+@media (max-width: 640px) {
+  .sucursals-shell .sucursal-actions-wrapper {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .sucursals-shell .sucursal-actions-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}

@@ -1,0 +1,36 @@
+/* resources/css/departamentos.css */
+
+/* Elevación suave en filas */
+.departamento-row {
+  transition:
+    background-color 150ms ease-out,
+    transform 150ms ease-out,
+    box-shadow 150ms ease-out;
+}
+
+.departamento-row:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+}
+
+/* Glow al pasar sobre botones de acciones */
+.departamento-row button:hover {
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.06),
+              0 10px 25px rgba(15, 23, 42, 0.12);
+}
+
+/* Animación al cargar filas */
+@keyframes departamentoFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+tbody[data-departamentos] tr {
+  animation: departamentoFadeIn 220ms ease-out;
+}

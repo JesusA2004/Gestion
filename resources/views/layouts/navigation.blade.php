@@ -70,20 +70,146 @@
                     </a>
                 </li>
 
-                {{-- Módulo ejemplo --}}
+                {{-- Supervisores --}}
                 <li>
-                    <a href="#"
-                       class="sb-item sb-item-default group"
+                    <a href="{{ route('supervisors.index') }}"
+                       class="sb-item group
+                              @if(request()->routeIs('supervisors.*'))
+                                  sb-item-active
+                              @else
+                                  sb-item-default
+                              @endif"
                     >
                         <span class="sb-item-icon group-hover:sb-item-icon-hover">
                             <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round"
-                                      d="M4 6h16M4 12h16M4 18h7"/>
+                                      d="M17 20h5V4h-5M2 20h5V10H2m6 10h8V8H8"/>
                             </svg>
                         </span>
-                        <span class="flex-1">Módulo ejemplo</span>
+                        <span class="flex-1 flex items-center justify-between">
+                            <span>Supervisores</span>
+                            @if(request()->routeIs('supervisors.*'))
+                                <span class="sb-pill-active">
+                                    <span class="sb-pill-dot"></span>
+                                    Activo
+                                </span>
+                            @endif
+                        </span>
                     </a>
                 </li>
+
+                {{-- Patrones --}}
+                <li>
+                    <a href="{{ route('patrons.index') }}"
+                       class="sb-item group
+                              @if(request()->routeIs('patrons.*'))
+                                  sb-item-active
+                              @else
+                                  sb-item-default
+                              @endif"
+                    >
+                        <span class="sb-item-icon group-hover:sb-item-icon-hover">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                      d="M17 20h5V4h-5M2 20h5V10H2m6 10h8V8H8"/>
+                            </svg>
+                        </span>
+                        <span class="flex-1 flex items-center justify-between">
+                            <span>Patrones</span>
+                            @if(request()->routeIs('patrons.*'))
+                                <span class="sb-pill-active">
+                                    <span class="sb-pill-dot"></span>
+                                    Activo
+                                </span>
+                            @endif
+                        </span>
+                    </a>
+                </li>
+
+                {{-- Sucursales --}}
+                <li>
+                    <a href="{{ route('sucursals.index') }}"
+                       class="sb-item group
+                              @if(request()->routeIs('sucursals.*'))
+                                  sb-item-active
+                              @else
+                                  sb-item-default
+                              @endif"
+                    >
+                        <span class="sb-item-icon group-hover:sb-item-icon-hover">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                      d="M3 21h18M4 10h16M6 6h12l1 4H5l1-4zM8 10v11m8-11v11"/>
+                            </svg>
+                        </span>
+                        <span class="flex-1 flex items-center justify-between">
+                            <span>Plazas</span>
+                            @if(request()->routeIs('sucursals.*'))
+                                <span class="sb-pill-active">
+                                    <span class="sb-pill-dot"></span>
+                                    Activo
+                                </span>
+                            @endif
+                        </span>
+                    </a>
+                </li>
+
+                {{-- Departamentos --}}
+                <li>
+                    <a href="{{ route('departamentos.index') }}"
+                       class="sb-item group
+                              @if(request()->routeIs('departamentos.*'))
+                                  sb-item-active
+                              @else
+                                  sb-item-default
+                              @endif"
+                    >
+                        <span class="sb-item-icon group-hover:sb-item-icon-hover">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                      d="M4 6h16M4 12h10M4 18h7"/>
+                            </svg>
+                        </span>
+                        <span class="flex-1 flex items-center justify-between">
+                            <span>Departamentos</span>
+                            @if(request()->routeIs('departamentos.*'))
+                                <span class="sb-pill-active">
+                                    <span class="sb-pill-dot"></span>
+                                    Activo
+                                </span>
+                            @endif
+                        </span>
+                    </a>
+                </li>
+
+                {{-- Empleados --}}
+                <li>
+                    <a href="{{ route('empleados.index') }}"
+                       class="sb-item group
+                              @if(request()->routeIs('empleados.*'))
+                                  sb-item-active
+                              @else
+                                  sb-item-default
+                              @endif"
+                    >
+                        <span class="sb-item-icon group-hover:sb-item-icon-hover">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                      d="M5.121 17.804A13.937 13.937 0 0112 15c2.5 0 4.847.655 6.879 1.804M15 9a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            </svg>
+                        </span>
+                        <span class="flex-1 flex items-center justify-between">
+                            <span>Empleados</span>
+                            @if(request()->routeIs('empleados.*'))
+                                <span class="sb-pill-active">
+                                    <span class="sb-pill-dot"></span>
+                                    Activo
+                                </span>
+                            @endif
+                        </span>
+                    </a>
+                </li>
+
             </ul>
 
             {{-- Separador --}}
