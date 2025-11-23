@@ -210,6 +210,62 @@
                     </a>
                 </li>
 
+                {{-- NUEVO: Reportes --}}
+                <li>
+                    <a href="{{ route('reportes.index') }}"
+                       class="sb-item group
+                              @if(request()->routeIs('reportes.*'))
+                                  sb-item-active
+                              @else
+                                  sb-item-default
+                              @endif"
+                    >
+                        <span class="sb-item-icon group-hover:sb-item-icon-hover">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                      d="M4 19h16M4 5h16M7 9v6m5-6v6m5-6v6"/>
+                            </svg>
+                        </span>
+                        <span class="flex-1 flex items-center justify-between">
+                            <span>Reportes</span>
+                            @if(request()->routeIs('reportes.*'))
+                                <span class="sb-pill-active">
+                                    <span class="sb-pill-dot"></span>
+                                    Activo
+                                </span>
+                            @endif
+                        </span>
+                    </a>
+                </li>
+
+                {{-- NUEVO: Base de datos --}}
+                <li>
+                    <a href="{{ route('backup.index') }}"
+                       class="sb-item group
+                              @if(request()->routeIs('backup.*'))
+                                  sb-item-active
+                              @else
+                                  sb-item-default
+                              @endif"
+                    >
+                        <span class="sb-item-icon group-hover:sb-item-icon-hover">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                      d="M4 7a4 4 0 014-4h8a4 4 0 014 4v10a4 4 0 01-4 4H8a4 4 0 01-4-4V7zM8 7h8m-6 5h4"/>
+                            </svg>
+                        </span>
+                        <span class="flex-1 flex items-center justify-between">
+                            <span>Base de datos</span>
+                            @if(request()->routeIs('backup.*'))
+                                <span class="sb-pill-active">
+                                    <span class="sb-pill-dot"></span>
+                                    Activo
+                                </span>
+                            @endif
+                        </span>
+                    </a>
+                </li>
+
             </ul>
 
             {{-- Separador --}}
@@ -410,7 +466,6 @@
                 });
             });
         });
-        </script>
+    </script>
 
 </div>
-

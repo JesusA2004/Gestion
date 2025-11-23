@@ -7,6 +7,8 @@ use App\Http\Controllers\SucursalController;
 use App\Http\Controllers\DepartamentoController;
 use App\Http\Controllers\EmpleadoController;
 use App\Http\Controllers\SupervisorController;
+use App\Http\Controllers\ReporteController;
+use App\Http\Controllers\BackupController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -36,6 +38,27 @@ Route::middleware('auth')->group(function () {
     ->name('empleados.cambiarEstado');
 
     Route::resource('/empleados', EmpleadoController::class);
+
+    // 🔹 Reportes
+    Route::get('/reportes', [ReporteController::class, 'index'])
+        ->name('reportes.index');
+
+    // Exportación a Excel (la que pide reportes.export)
+    Route::get('/reportes/export', [ReporteController::class, 'export'])
+        ->name('reportes.export');
+
+    // 🔹 Base de datos (carga de datos y respaldo)
+    // Vista principal 
+    Route::get('/backup', [BackupController::class, 'index'])
+        ->name('backup.index');
+
+    // Descargar respaldo
+    Route::get('/backup/descargar', [BackupController::class, 'download'])
+        ->name('backup.download');
+
+    // Restaurar desde archivo SQL
+    Route::post('/backup/restaurar', [BackupController::class, 'restore'])
+        ->name('backup.restore');
 
 });
 
