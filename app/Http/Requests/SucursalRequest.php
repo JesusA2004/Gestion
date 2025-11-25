@@ -8,8 +8,6 @@ class SucursalRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        // Como solo usuarios autenticados acceden al panel, 
-        // aquí puedes dejar true. Si quieres roles después, se ajusta.
         return true;
     }
 
@@ -18,7 +16,6 @@ class SucursalRequest extends FormRequest
         return [
             'nombre'    => ['required', 'string', 'max:255'],
             'direccion' => ['nullable', 'string'],
-            'activa'    => ['sometimes', 'boolean'],
         ];
     }
 

@@ -10,7 +10,7 @@ class EmpleadoResource extends JsonResource
     /**
      * Transform the resource into an array.
      *
-     * @return array<string,mixed>
+     * @return array<string, mixed>
      */
     public function toArray(Request $request): array
     {
@@ -22,25 +22,52 @@ class EmpleadoResource extends JsonResource
             'nombre_completo'     => $this->nombre_completo,
 
             'numero_trabajador'   => $this->numero_trabajador,
-            'estado'              => $this->estado,
 
             'patron_id'           => $this->patron_id,
-            'patron_nombre'       => optional($this->patron)->nombre,
-
             'sucursal_id'         => $this->sucursal_id,
-            'sucursal_nombre'     => optional($this->sucursal)->nombre,
-
             'departamento_id'     => $this->departamento_id,
-            'departamento_nombre' => optional($this->departamento)->nombre,
-
             'supervisor_id'       => $this->supervisor_id,
-            'supervisor_nombre'   => optional($this->supervisor)->nombre_completo ?? null,
 
-            'fecha_ingreso'       => optional($this->fecha_ingreso)->format('Y-m-d'),
-            'fecha_baja'          => optional($this->fecha_baja)->format('Y-m-d'),
+            'estado'              => $this->estado,
+            'estado_imss'         => $this->estado_imss,
+            'numero_imss'         => $this->numero_imss,
+            'registro_patronal'   => $this->registro_patronal,
+            'codigo_postal'       => $this->codigo_postal,
 
-            'created_at'          => optional($this->created_at)->format('Y-m-d H:i'),
-            'updated_at'          => optional($this->updated_at)->format('Y-m-d H:i'),
+            'fecha_alta_imss'     => $this->fecha_alta_imss?->format('Y-m-d'),
+
+            'curp'                => $this->curp,
+            'rfc'                 => $this->rfc,
+
+            'cuenta_bancaria'     => $this->cuenta_bancaria,
+            'tarjeta'             => $this->tarjeta,
+            'clabe_interbancaria' => $this->clabe_interbancaria,
+            'banco'               => $this->banco,
+
+            'sdi'                 => $this->sdi,
+            'empresa_facturar'    => $this->empresa_facturar,
+            'importe_factura_mensual' => $this->importe_factura_mensual,
+
+            'fecha_ingreso'       => $this->fecha_ingreso?->format('Y-m-d'),
+            'numero_reingresos'   => $this->numero_reingresos,
+            'color'               => $this->color,
+
+            'created_at'          => $this->created_at?->format('Y-m-d H:i:s'),
+            'updated_at'          => $this->updated_at?->format('Y-m-d H:i:s'),
+
+            // ========= Relaciones opcionales (solo si se cargan con with()) =========
+
+            'patron' => new PatronResource($this->whenLoaded('patron')),
+
+            'sucursal' => new SucursalResource($this->whenLoaded('sucursal')),
+
+            'departamento' => new DepartamentoResource($this->whenLoaded('departamento')),
+
+            'supervisor' => new SupervisorResource($this->whenLoaded('supervisor')),
+
+            'periodos' => EmpleadoPeriodoResource::collection(
+                $this->whenLoaded('periodos')
+            ),
         ];
     }
 }

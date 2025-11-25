@@ -9,6 +9,7 @@ use App\Http\Controllers\EmpleadoController;
 use App\Http\Controllers\SupervisorController;
 use App\Http\Controllers\ReporteController;
 use App\Http\Controllers\BackupController;
+use App\Http\Controllers\EmpleadoPeriodoController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -38,6 +39,26 @@ Route::middleware('auth')->group(function () {
     ->name('empleados.cambiarEstado');
 
     Route::resource('/empleados', EmpleadoController::class);
+
+    // Periodos de un empleado específico (colección)
+    Route::get('/empleados/{empleado}/periodos', [EmpleadoPeriodoController::class, 'index'])
+        ->name('empleados.periodos.index');
+
+    Route::post('/empleados/{empleado}/periodos', [EmpleadoPeriodoController::class, 'store'])
+        ->name('empleados.periodos.store');
+
+    // Operaciones sobre un periodo específico
+    Route::get('/periodos/{periodo}', [EmpleadoPeriodoController::class, 'show'])
+        ->name('periodos.show');
+
+    Route::put('/periodos/{periodo}', [EmpleadoPeriodoController::class, 'update'])
+        ->name('periodos.update');
+
+    Route::patch('/periodos/{periodo}', [EmpleadoPeriodoController::class, 'update'])
+        ->name('periodos.patch');
+
+    Route::delete('/periodos/{periodo}', [EmpleadoPeriodoController::class, 'destroy'])
+        ->name('periodos.destroy');
 
     // 🔹 Reportes
     Route::get('/reportes', [ReporteController::class, 'index'])

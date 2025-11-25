@@ -13,12 +13,11 @@ use Illuminate\Http\Request;
 
 class EmpleadoController extends Controller
 {
-
     // Listar empleados con filtros y paginación
     public function index(Request $request)
     {
         $search = trim($request->get('q', ''));
-        $estado = $request->get('estado');
+        $estado = $request->get('estado');        // estado geográfico (Morelos, CDMX, etc.)
 
         $empleados = Empleado::with(['patron', 'sucursal', 'departamento', 'supervisor'])
             ->when($search, function ($q) use ($search) {
@@ -31,6 +30,7 @@ class EmpleadoController extends Controller
                         ->orWhere('rfc', 'like', "%{$search}%");
                 });
             })
+            // filtro por estado geográfico (opcional)
             ->when($estado !== null && $estado !== '', function ($q) use ($estado) {
                 $q->where('estado', $estado);
             })
@@ -69,40 +69,53 @@ class EmpleadoController extends Controller
         })->values();
 
         return view('empleados.index', [
-            'empleados'        => $empleados,
-            'search'           => $search,
-            'estado'           => $estado,
-            'patrones'         => $patrones,
-            'sucursales'       => $sucursales,
-            'departamentos'    => $departamentos,
-            'supervisores'     => $supervisores,
-            // nuevos:
-            'patronesList'     => $patronesList,
-            'sucursalesList'   => $sucursalesList,
-            'departamentosList'=> $departamentosList,
-            'supervisoresList' => $supervisoresList,
+            'empleados'          => $empleados,
+            'search'             => $search,
+            'estado'             => $estado,
+            'patrones'           => $patrones,
+            'sucursales'         => $sucursales,
+            'departamentos'      => $departamentos,
+            'supervisores'       => $supervisores,
+            'patronesList'       => $patronesList,
+            'sucursalesList'     => $sucursalesList,
+            'departamentosList'  => $departamentosList,
+            'supervisoresList'   => $supervisoresList,
         ]);
     }
 
+    /**
+     * Cambiar estado IMSS del empleado (alta / inactivo)
+     */
     public function cambiarEstado(Request $request, Empleado $empleado)
     {
         $request->validate([
-            'estado' => 'required|in:alta,baja'
+            'estado_imss' => 'required|in:alta,inactivo',
         ]);
 
-        $empleado->estado = $request->estado;
+        $empleado->estado_imss = $request->estado_imss;
         $empleado->save();
 
         return response()->json([
-            'ok' => true,
-            'message' => 'Estado actualizado correctamente.',
-            'estado' => $empleado->estado
+            'ok'          => true,
+            'message'     => 'Estado IMSS actualizado correctamente.',
+            'estado_imss' => $empleado->estado_imss,
         ]);
     }
 
-    public function create() { return redirect()->route('empleados.index'); }
-    public function show(Empleado $empleado) { return redirect()->route('empleados.index'); }
-    public function edit(Empleado $empleado) { return redirect()->route('empleados.index'); }
+    public function create()
+    {
+        return redirect()->route('empleados.index');
+    }
+
+    public function show(Empleado $empleado)
+    {
+        return redirect()->route('empleados.index');
+    }
+
+    public function edit(Empleado $empleado)
+    {
+        return redirect()->route('empleados.index');
+    }
 
     // Almacenar nuevo empleado
     public function store(EmpleadoRequest $request)
@@ -112,7 +125,9 @@ class EmpleadoController extends Controller
         return response()->json([
             'ok'      => true,
             'message' => 'Empleado registrado correctamente.',
-            'data'    => new EmpleadoResource($empleado->load(['patron', 'sucursal', 'departamento', 'supervisor'])),
+            'data'    => new EmpleadoResource(
+                $empleado->load(['patron', 'sucursal', 'departamento', 'supervisor', 'periodos'])
+            ),
         ]);
     }
 
@@ -124,7 +139,9 @@ class EmpleadoController extends Controller
         return response()->json([
             'ok'      => true,
             'message' => 'Empleado actualizado correctamente.',
-            'data'    => new EmpleadoResource($empleado->fresh()->load(['patron', 'sucursal', 'departamento', 'supervisor'])),
+            'data'    => new EmpleadoResource(
+                $empleado->fresh()->load(['patron', 'sucursal', 'departamento', 'supervisor', 'periodos'])
+            ),
         ]);
     }
 
@@ -138,5 +155,5 @@ class EmpleadoController extends Controller
             'message' => 'Empleado eliminado correctamente.',
         ]);
     }
-
+    
 }

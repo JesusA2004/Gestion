@@ -20,6 +20,9 @@ class SupervisorResource extends JsonResource
             'nombre_completo'  => trim($this->nombres . ' ' . $this->apellidoPaterno . ' ' . $this->apellidoMaterno),
             'created_at'       => $this->created_at?->format('Y-m-d H:i:s'),
             'updated_at'       => $this->updated_at?->format('Y-m-d H:i:s'),
+
+            // Relación opcional futura:
+            'empleados' => EmpleadoResource::collection($this->whenLoaded('empleados')),
         ];
     }
 }

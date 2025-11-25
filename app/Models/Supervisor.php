@@ -22,11 +22,6 @@ class Supervisor extends Model
         return $this->hasMany(Empleado::class, 'supervisor_id');
     }
 
-    public function supervisados()
-    {
-        return $this->hasMany(Empleado::class, 'supervisor_id');
-    }
-
     public function getNombreCompletoAttribute(): string
     {
         return trim("{$this->nombres} {$this->apellidoPaterno} {$this->apellidoMaterno}");

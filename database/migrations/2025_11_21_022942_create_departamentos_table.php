@@ -11,20 +11,19 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('sucursals', function (Blueprint $table) {
+        Schema::create('departamentos', function (Blueprint $table) {
             $table->id();
             $table->string('nombre');
             $table->text('direccion')->nullable();
-            $table->boolean('activa')->default(true);
             $table->timestamps();
         });
     }
 
     /**
-     * Revertir la migración.
+     * Revierte la migración
      */
     public function down(): void
     {
-        Schema::dropIfExists('sucursals');
+        Schema::dropIfExists('departamentos');
     }
 };

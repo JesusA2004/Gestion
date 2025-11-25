@@ -20,6 +20,7 @@ class Empleado extends Model
         'sucursal_id',
         'departamento_id',
         'estado',
+        'estado_imss',
         'numero_imss',
         'registro_patronal',
         'codigo_postal',
@@ -30,30 +31,32 @@ class Empleado extends Model
         'tarjeta',
         'clabe_interbancaria',
         'banco',
-        'sueldo_diario_bruto',
-        'sueldo_diario_neto',
-        'salario_diario_imss',
         'sdi',
         'supervisor_id',
         'empresa_facturar',
-        'total_guardias_factura',
         'importe_factura_mensual',
         'fecha_ingreso',
-        'fecha_baja',
+        'numero_reingresos',
+        'color',
     ];
 
     protected $casts = [
         'fecha_alta_imss'       => 'date',
         'fecha_ingreso'         => 'date',
-        'fecha_baja'            => 'date',
-        'activa'                => 'boolean',
-        'total_guardias_factura'=> 'integer',
         'importe_factura_mensual' => 'decimal:2',
-        'sueldo_diario_bruto'   => 'decimal:2',
-        'sueldo_diario_neto'    => 'decimal:2',
-        'salario_diario_imss'   => 'decimal:2',
         'sdi'                   => 'decimal:2',
+        'patron_id'                => 'integer',
+        'sucursal_id'              => 'integer',
+        'departamento_id'          => 'integer',
+        'supervisor_id'            => 'integer',
+        'numero_reingresos'        => 'integer',
+        'estado_imss'              => 'string',
     ];
+
+    public function periodo()
+    {
+        return $this->hasMany(EmpleadoPeriodo::class, 'empleado_id');
+    }
 
     public function patron()
     {

@@ -14,7 +14,6 @@ class Departamento extends Model
     protected $fillable = [
         'nombre',
         'direccion',
-        'activa',
     ];
 
     public function empleados()

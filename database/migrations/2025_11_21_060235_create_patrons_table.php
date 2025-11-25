@@ -11,10 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Crear la tabla 'patrons'
         Schema::create('patrons', function (Blueprint $table) {
             $table->id();
-            $table->string('nombre');     // Nombre de la empresa
-            $table->timestamps();         // created_at / updated_at
+            $table->string('nombre');
+            // timestamps sirve para crear las columnas created_at y updated_at
+            $table->timestamps();
         });
     }
 

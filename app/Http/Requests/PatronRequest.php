@@ -8,8 +8,6 @@ class PatronRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        // Si solo usuarios autenticados acceden a este módulo,
-        // el middleware auth ya se encarga. Aquí dejamos true.
         return true;
     }
 

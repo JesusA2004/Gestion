@@ -18,13 +18,12 @@ class DepartamentoResource extends JsonResource
             'id'        => $this->id,
             'nombre'    => $this->nombre,
             'direccion' => $this->direccion,
-            'activa'    => (bool) $this->activa,
 
             'created_at' => optional($this->created_at)->format('Y-m-d H:i'),
             'updated_at' => optional($this->updated_at)->format('Y-m-d H:i'),
 
             // Relación opcional futura:
-            // 'empleados' => EmpleadoResource::collection($this->whenLoaded('empleados')),
+            'empleados' => EmpleadoResource::collection($this->whenLoaded('empleados')),
         ];
     }
 }

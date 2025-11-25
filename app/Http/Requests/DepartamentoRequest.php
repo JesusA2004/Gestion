@@ -17,7 +17,6 @@ class DepartamentoRequest extends FormRequest
         return [
             'nombre'    => ['required', 'string', 'max:255'],
             'direccion' => ['nullable', 'string', 'max:255'],
-            'activa'    => ['required', 'boolean'],
         ];
     }
 
@@ -27,8 +26,6 @@ class DepartamentoRequest extends FormRequest
             'nombre.required' => 'El nombre del departamento es obligatorio.',
             'nombre.max'      => 'El nombre no debe superar los 255 caracteres.',
             'direccion.max'   => 'La dirección no debe superar los 255 caracteres.',
-            'activa.required' => 'El estado del departamento es obligatorio.',
-            'activa.boolean'  => 'El estado del departamento no es válido.',
         ];
     }
 }
