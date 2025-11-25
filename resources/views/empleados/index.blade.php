@@ -11,21 +11,23 @@
                             Empleados
                         </h1>
                         <p class="mt-2 text-sm md:text-base text-gray-500 max-w-xl">
-                            Gestión integral de empleados: alta, edición, baja, filtros avanzados y asignación a patrón, sucursal,
+                            Gestión integral de empleados: alta, edición, historial de periodos, filtros avanzados y asignación a patrón, sucursal,
                             departamento y supervisor.
                         </p>
                     </div>
 
-                    <button
-                        type="button"
-                        onclick="window.openCreateEmpleadoModal()"
-                        class="inline-flex items-center gap-2 rounded-2xl bg-indigo-600 px-5 py-2.5 text-sm md:text-base font-semibold text-white shadow-md shadow-indigo-500/30 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 empleados-btn-cta"
-                    >
-                        <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
-                        </svg>
-                        Nuevo empleado
-                    </button>
+                    @if(auth()->user()->role === 'admin')
+                        <button
+                            type="button"
+                            onclick="window.openCreateEmpleadoModal()"
+                            class="inline-flex items-center gap-2 rounded-2xl bg-indigo-600 px-5 py-2.5 text-sm md:text-base font-semibold text-white shadow-md shadow-indigo-500/30 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 empleados-btn-cta"
+                        >
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                            </svg>
+                            Nuevo empleado
+                        </button>
+                    @endif
                 </div>
 
                 {{-- Filtros en tiempo real --}}
@@ -61,10 +63,10 @@
                             </div>
                         </div>
 
-                        {{-- Estado --}}
+                        {{-- Estado IMSS --}}
                         <div class="lg:col-span-2">
                             <label for="empleado-filter-estado" class="empleados-label">
-                                Estado
+                                Estado IMSS
                             </label>
                             <select
                                 id="empleado-filter-estado"
@@ -72,7 +74,7 @@
                             >
                                 <option value="">Todos</option>
                                 <option value="alta">Alta</option>
-                                <option value="baja">Baja</option>
+                                <option value="inactivo">Inactivo</option>
                             </select>
                         </div>
 
@@ -232,7 +234,7 @@
                                     class="empleado-row hover:bg-indigo-50/60 transition-colors"
                                     data-empleado-row
                                     data-search="{{ $searchData }}"
-                                    data-estado="{{ $empleado->estado }}"
+                                    data-estado-imss="{{ $empleado->estado_imss }}"
                                     data-patron-id="{{ $empleado->patron_id }}"
                                     data-sucursal-id="{{ $empleado->sucursal_id }}"
                                     data-departamento-id="{{ $empleado->departamento_id }}"
@@ -248,16 +250,25 @@
                                                     {{ $nombreCompleto }}
                                                 </span>
 
-                                                {{-- pill estado + botón cambio rápido --}}
-                                                <button
-                                                    type="button"
-                                                    onclick="window.openToggleEstadoEmpleado({{ $empleado->id }}, '{{ $empleado->estado }}')"
-                                                    class="empleados-pill-estado {{ $empleado->estado === 'alta' ? 'empleados-pill-estado-alta' : 'empleados-pill-estado-baja' }}"
-                                                >
-                                                    <span class="empleados-pill-dot {{ $empleado->estado === 'alta' ? 'bg-emerald-400' : 'bg-rose-400' }}"></span>
-                                                    {{ ucfirst($empleado->estado) }}
-                                                    <span class="text-[9px] opacity-80 ml-1">(cambiar)</span>
-                                                </button>
+                                                {{-- Estado IMSS: admin puede cambiar, colaborador solo ver --}}
+                                                @if(auth()->user()->role === 'admin')
+                                                    <button
+                                                        type="button"
+                                                        onclick="window.openToggleEstadoEmpleado({{ $empleado->id }}, '{{ $empleado->estado_imss }}')"
+                                                        class="empleados-pill-estado {{ $empleado->estado_imss === 'alta' ? 'empleados-pill-estado-alta' : 'empleados-pill-estado-baja' }}"
+                                                    >
+                                                        <span class="empleados-pill-dot {{ $empleado->estado_imss === 'alta' ? 'bg-emerald-400' : 'bg-rose-400' }}"></span>
+                                                        {{ ucfirst($empleado->estado_imss) }}
+                                                        <span class="text-[9px] opacity-80 ml-1">(cambiar)</span>
+                                                    </button>
+                                                @else
+                                                    <span
+                                                        class="empleados-pill-estado {{ $empleado->estado_imss === 'alta' ? 'empleados-pill-estado-alta' : 'empleados-pill-estado-baja' }}"
+                                                    >
+                                                        <span class="empleados-pill-dot {{ $empleado->estado_imss === 'alta' ? 'bg-emerald-400' : 'bg-rose-400' }}"></span>
+                                                        {{ ucfirst($empleado->estado_imss) }}
+                                                    </span>
+                                                @endif
                                             </div>
                                             <p class="text-xs md:text-sm text-slate-600">
                                                 No. trabajador:
@@ -309,15 +320,15 @@
                                                 </span>
                                             </div>
                                             <div>
-                                                <span class="font-semibold text-slate-800">Baja:</span>
-                                                <span class="ml-1">
-                                                    {{ optional($empleado->fecha_baja)->format('d-m-Y') ?? '—' }}
-                                                </span>
-                                            </div>
-                                            <div>
                                                 <span class="font-semibold text-slate-800">Alta IMSS:</span>
                                                 <span class="ml-1">
                                                     {{ optional($empleado->fecha_alta_imss)->format('d-m-Y') ?? '—' }}
+                                                </span>
+                                            </div>
+                                            <div>
+                                                <span class="font-semibold text-slate-800">Reingresos:</span>
+                                                <span class="ml-1">
+                                                    {{ $empleado->numero_reingresos ?? 0 }}
                                                 </span>
                                             </div>
                                             <p class="text-[11px] text-slate-400 pt-1">
@@ -330,7 +341,7 @@
                                     {{-- Acciones --}}
                                     <td class="px-4 py-4 md:py-5 align-top text-right">
                                         <div class="inline-flex flex-wrap justify-end gap-2 md:gap-3">
-                                            {{-- Ver --}}
+                                            {{-- Ver (todos los roles) --}}
                                             <button
                                                 type="button"
                                                 onclick="window.openShowEmpleadoModal(this)"
@@ -340,9 +351,9 @@
                                                 data-apellido-paterno="{{ $empleado->apellidoPaterno }}"
                                                 data-apellido-materno="{{ $empleado->apellidoMaterno }}"
                                                 data-numero-trabajador="{{ $empleado->numero_trabajador }}"
-                                                data-estado="{{ $empleado->estado }}"
+                                                data-estado="{{ $empleado->estado_imss }}"
                                                 data-fecha-ingreso="{{ optional($empleado->fecha_ingreso)->format('Y-m-d') }}"
-                                                data-fecha-baja="{{ optional($empleado->fecha_baja)->format('Y-m-d') }}"
+                                                data-fecha-baja=""
                                                 data-patron-id="{{ $empleado->patron_id }}"
                                                 data-patron-nombre="{{ optional($empleado->patron)->nombre }}"
                                                 data-sucursal-id="{{ $empleado->sucursal_id }}"
@@ -361,67 +372,81 @@
                                                 data-cuenta-bancaria="{{ $empleado->cuenta_bancaria }}"
                                                 data-tarjeta="{{ $empleado->tarjeta }}"
                                                 data-clabe="{{ $empleado->clabe_interbancaria }}"
-                                                data-sueldo-bruto="{{ $empleado->sueldo_diario_bruto }}"
-                                                data-sueldo-neto="{{ $empleado->sueldo_diario_neto }}"
-                                                data-salario-imss="{{ $empleado->salario_diario_imss }}"
+                                                data-sueldo-bruto=""
+                                                data-sueldo-neto=""
+                                                data-salario-imss=""
                                                 data-sdi="{{ $empleado->sdi }}"
                                             >
                                                 Ver
                                             </button>
 
-                                            {{-- Editar --}}
+                                            {{-- Historial de periodos (todos pueden ver) --}}
                                             <button
                                                 type="button"
-                                                onclick="window.openEditEmpleadoModal(this)"
-                                                class="empleados-btn-editar"
-                                                data-id="{{ $empleado->id }}"
-                                                data-nombres="{{ $empleado->nombres }}"
-                                                data-apellido-paterno="{{ $empleado->apellidoPaterno }}"
-                                                data-apellido-materno="{{ $empleado->apellidoMaterno }}"
-                                                data-numero-trabajador="{{ $empleado->numero_trabajador }}"
-                                                data-estado="{{ $empleado->estado }}"
-                                                data-fecha-ingreso="{{ optional($empleado->fecha_ingreso)->format('Y-m-d') }}"
-                                                data-fecha-baja="{{ optional($empleado->fecha_baja)->format('Y-m-d') }}"
-                                                data-patron-id="{{ $empleado->patron_id }}"
-                                                data-sucursal-id="{{ $empleado->sucursal_id }}"
-                                                data-departamento-id="{{ $empleado->departamento_id }}"
-                                                data-supervisor-id="{{ $empleado->supervisor_id }}"
-                                                data-numero-imss="{{ $empleado->numero_imss }}"
-                                                data-registro-patronal="{{ $empleado->registro_patronal }}"
-                                                data-codigo-postal="{{ $empleado->codigo_postal }}"
-                                                data-fecha-alta-imss="{{ optional($empleado->fecha_alta_imss)->format('Y-m-d') }}"
-                                                data-curp="{{ $empleado->curp }}"
-                                                data-rfc="{{ $empleado->rfc }}"
-                                                data-banco="{{ $empleado->banco }}"
-                                                data-cuenta-bancaria="{{ $empleado->cuenta_bancaria }}"
-                                                data-tarjeta="{{ $empleado->tarjeta }}"
-                                                data-clabe="{{ $empleado->clabe_interbancaria }}"
-                                                data-sueldo-bruto="{{ $empleado->sueldo_diario_bruto }}"
-                                                data-sueldo-neto="{{ $empleado->sueldo_diario_neto }}"
-                                                data-salario-imss="{{ $empleado->salario_diario_imss }}"
-                                                data-sdi="{{ $empleado->sdi }}"
+                                                onclick="window.openPeriodosEmpleadoModal(this)"
+                                                class="empleados-btn-ghost"
+                                                data-empleado-id="{{ $empleado->id }}"
+                                                data-empleado-nombre="{{ $nombreCompleto }}"
                                             >
-                                                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                          d="M16.862 4.487l1.687-1.687a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z"/>
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                          d="M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"/>
-                                                </svg>
-                                                Editar
+                                                Historial de periodos
                                             </button>
 
-                                            {{-- Eliminar --}}
-                                            <button
-                                                type="button"
-                                                onclick="window.confirmDeleteEmpleado({{ $empleado->id }})"
-                                                class="empleados-btn-eliminar"
-                                            >
-                                                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                          d="M6 7h12M10 11v6m4-6v6M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2M6 7l1 11a2 2 0 002 2h6a2 2 0 002-2l1-11"/>
-                                                </svg>
-                                                Eliminar
-                                            </button>
+                                            {{-- Acciones solo para admin --}}
+                                            @if(auth()->user()->role === 'admin')
+                                                {{-- Editar --}}
+                                                <button
+                                                    type="button"
+                                                    onclick="window.openEditEmpleadoModal(this)"
+                                                    class="empleados-btn-editar"
+                                                    data-id="{{ $empleado->id }}"
+                                                    data-nombres="{{ $empleado->nombres }}"
+                                                    data-apellido-paterno="{{ $empleado->apellidoPaterno }}"
+                                                    data-apellido-materno="{{ $empleado->apellidoMaterno }}"
+                                                    data-numero-trabajador="{{ $empleado->numero_trabajador }}"
+                                                    data-estado="{{ $empleado->estado_imss }}"
+                                                    data-fecha-ingreso="{{ optional($empleado->fecha_ingreso)->format('Y-m-d') }}"
+                                                    data-fecha-baja=""
+                                                    data-patron-id="{{ $empleado->patron_id }}"
+                                                    data-sucursal-id="{{ $empleado->sucursal_id }}"
+                                                    data-departamento-id="{{ $empleado->departamento_id }}"
+                                                    data-supervisor-id="{{ $empleado->supervisor_id }}"
+                                                    data-numero-imss="{{ $empleado->numero_imss }}"
+                                                    data-registro-patronal="{{ $empleado->registro_patronal }}"
+                                                    data-codigo-postal="{{ $empleado->codigo_postal }}"
+                                                    data-fecha-alta-imss="{{ optional($empleado->fecha_alta_imss)->format('Y-m-d') }}"
+                                                    data-curp="{{ $empleado->curp }}"
+                                                    data-rfc="{{ $empleado->rfc }}"
+                                                    data-banco="{{ $empleado->banco }}"
+                                                    data-cuenta-bancaria="{{ $empleado->cuenta_bancaria }}"
+                                                    data-tarjeta="{{ $empleado->tarjeta }}"
+                                                    data-clabe="{{ $empleado->clabe_interbancaria }}"
+                                                    data-sueldo-bruto=""
+                                                    data-sueldo-neto=""
+                                                    data-salario-imss=""
+                                                    data-sdi="{{ $empleado->sdi }}"
+                                                >
+                                                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                              d="M16.862 4.487l1.687-1.687a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z"/>
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                              d="M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"/>
+                                                    </svg>
+                                                    Editar
+                                                </button>
+
+                                                {{-- Eliminar --}}
+                                                <button
+                                                    type="button"
+                                                    onclick="window.confirmDeleteEmpleado({{ $empleado->id }})"
+                                                    class="empleados-btn-eliminar"
+                                                >
+                                                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                              d="M6 7h12M10 11v6m4-6v6M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2M6 7l1 11a2 2 0 002 2h6a2 2 0 002-2l1-11"/>
+                                                    </svg>
+                                                    Eliminar
+                                                </button>
+                                            @endif
                                         </div>
                                     </td>
                                 </tr>
@@ -452,6 +477,7 @@
             window.EmpleadosConfig = {
                 baseUrl: '{{ url('') }}',
                 csrfToken: '{{ csrf_token() }}',
+                canManage: {{ auth()->user()->role === 'admin' ? 'true' : 'false' }},
                 lookups: {
                     patrones: @json($patronesList),
                     sucursales: @json($sucursalesList),

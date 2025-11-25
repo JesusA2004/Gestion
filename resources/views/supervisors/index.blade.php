@@ -15,16 +15,18 @@
                         </p>
                     </div>
 
-                    <button
-                        type="button"
-                        onclick="openCreateSupervisorModal()"
-                        class="inline-flex items-center gap-2 rounded-2xl bg-indigo-600 px-5 py-2.5 text-sm md:text-base font-semibold text-white shadow-md shadow-indigo-500/30 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                    >
-                        <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
-                        </svg>
-                        Nuevo supervisor
-                    </button>
+                    @if(auth()->user()->role === 'admin')
+                        <button
+                            type="button"
+                            onclick="openCreateSupervisorModal()"
+                            class="inline-flex items-center gap-2 rounded-2xl bg-indigo-600 px-5 py-2.5 text-sm md:text-base font-semibold text-white shadow-md shadow-indigo-500/30 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                        >
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                            </svg>
+                            Nuevo supervisor
+                        </button>
+                    @endif
                 </div>
 
                 {{-- Filtros en tiempo real --}}
@@ -78,9 +80,11 @@
                                 <th class="px-4 py-3 md:py-4 text-left text-[11px] md:text-xs font-semibold text-slate-500 uppercase tracking-wide">
                                     Fechas (creación / modificación)
                                 </th>
-                                <th class="px-4 py-3 md:py-4 text-right text-[11px] md:text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                                    Acciones
-                                </th>
+                                @if(auth()->user()->role === 'admin')
+                                    <th class="px-4 py-3 md:py-4 text-right text-[11px] md:text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                                        Acciones
+                                    </th>
+                                @endif
                             </tr>
                         </thead>
                         <tbody
@@ -127,37 +131,40 @@
 
                                     <td class="px-4 py-4 md:py-5 align-top text-right">
                                         <div class="inline-flex flex-wrap justify-end gap-2 md:gap-3">
-                                            {{-- Botón editar --}}
-                                            <button
-                                                type="button"
-                                                data-id="{{ $supervisor->id }}"
-                                                data-nombres="{{ $supervisor->nombres }}"
-                                                data-apellido-paterno="{{ $supervisor->apellidoPaterno }}"
-                                                data-apellido-materno="{{ $supervisor->apellidoMaterno }}"
-                                                onclick="openEditSupervisorModal(this)"
-                                                class="inline-flex items-center gap-1.5 rounded-full bg-amber-400/90 px-3.5 md:px-4 py-1.5 md:py-2 text-[11px] md:text-xs font-semibold text-white shadow-sm hover:bg-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
-                                            >
-                                                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                          d="M16.862 4.487l1.687-1.687a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z"/>
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                          d="M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"/>
-                                                </svg>
-                                                Editar
-                                            </button>
-
-                                            {{-- Botón eliminar --}}
-                                            <button
-                                                type="button"
-                                                onclick="confirmDeleteSupervisor({{ $supervisor->id }})"
-                                                class="inline-flex items-center gap-1.5 rounded-full bg-rose-500/90 px-3.5 md:px-4 py-1.5 md:py-2 text-[11px] md:text-xs font-semibold text-white shadow-sm hover:bg-rose-600 focus:outline-none focus:ring-1 focus:ring-rose-500"
-                                            >
-                                                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                          d="M6 7h12M10 11v6m4-6v6M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2M6 7l1 11a2 2 0 002 2h6a2 2 0 002-2l1-11"/>
-                                                </svg>
-                                                Eliminar
-                                            </button>
+                                            @if(auth()->user()->role === 'admin')
+                                                {{-- Botón editar --}}
+                                                <button
+                                                    type="button"
+                                                    data-id="{{ $supervisor->id }}"
+                                                    data-nombres="{{ $supervisor->nombres }}"
+                                                    data-apellido-paterno="{{ $supervisor->apellidoPaterno }}"
+                                                    data-apellido-materno="{{ $supervisor->apellidoMaterno }}"
+                                                    onclick="openEditSupervisorModal(this)"
+                                                    class="inline-flex items-center gap-1.5 rounded-full bg-amber-400/90 px-3.5 md:px-4 py-1.5 md:py-2 text-[11px] md:text-xs font-semibold text-white shadow-sm hover:bg-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                                                >
+                                                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            d="M16.862 4.487l1.687-1.687a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z"/>
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            d="M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"/>
+                                                    </svg>
+                                                    Editar
+                                                </button>
+                                            @endif
+                                            @if(auth()->user()->role === 'admin')
+                                                {{-- Botón eliminar --}}
+                                                <button
+                                                    type="button"
+                                                    onclick="confirmDeleteSupervisor({{ $supervisor->id }})"
+                                                    class="inline-flex items-center gap-1.5 rounded-full bg-rose-500/90 px-3.5 md:px-4 py-1.5 md:py-2 text-[11px] md:text-xs font-semibold text-white shadow-sm hover:bg-rose-600 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                                                >
+                                                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            d="M6 7h12M10 11v6m4-6v6M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2M6 7l1 11a2 2 0 002 2h6a2 2 0 002-2l1-11"/>
+                                                    </svg>
+                                                    Eliminar
+                                                </button>
+                                            @endif
                                         </div>
                                     </td>
                                 </tr>

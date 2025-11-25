@@ -10,14 +10,15 @@ use App\Http\Controllers\SupervisorController;
 use App\Http\Controllers\ReporteController;
 use App\Http\Controllers\BackupController;
 use App\Http\Controllers\EmpleadoPeriodoController;
+use App\Http\Controllers\DashboardController;
 
 Route::get('/', function () {
     return view('welcome');
 });
 
-Route::get('/dashboard', function () {
-    return view('dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+Route::get('/dashboard', [DashboardController::class, 'index'])
+    ->middleware(['auth', 'verified'])
+    ->name('dashboard');
 
 Route::middleware('auth')->group(function () {
 

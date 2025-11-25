@@ -15,16 +15,18 @@
                         </p>
                     </div>
 
-                    <button
-                        type="button"
-                        onclick="openCreateDepartamentoModal()"
-                        class="inline-flex items-center gap-2 rounded-2xl bg-indigo-600 px-5 py-2.5 text-sm md:text-base font-semibold text-white shadow-md shadow-indigo-500/30 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                    >
-                        <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
-                        </svg>
-                        Nuevo departamento
-                    </button>
+                    @if(auth()->user()->role === 'admin')
+                        <button
+                            type="button"
+                            onclick="openCreateDepartamentoModal()"
+                            class="inline-flex items-center gap-2 rounded-2xl bg-indigo-600 px-5 py-2.5 text-sm md:text-base font-semibold text-white shadow-md shadow-indigo-500/30 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                        >
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                            </svg>
+                            Nuevo departamento
+                        </button>
+                    @endif
                 </div>
 
                 {{-- Filtros en tiempo real --}}
@@ -51,22 +53,6 @@
                             </div>
                         </div>
 
-                        {{-- Filtro estado --}}
-                        <div>
-                            <label for="departamento-filter-status" class="block text-[11px] md:text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                                Estado
-                            </label>
-                            <div class="mt-1">
-                                <select
-                                    id="departamento-filter-status"
-                                    class="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2.5 text-sm md:text-base text-slate-800 shadow-sm focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                                >
-                                    <option value="">Todos</option>
-                                    <option value="1">Activos</option>
-                                    <option value="0">Inactivos</option>
-                                </select>
-                            </div>
-                        </div>
                     </div>
                 </div>
 
@@ -81,9 +67,11 @@
                                 <th class="px-4 py-3 md:py-4 text-left text-[11px] md:text-xs font-semibold text-slate-500 uppercase tracking-wide">
                                     Fechas (creación / modificación)
                                 </th>
-                                <th class="px-4 py-3 md:py-4 text-right text-[11px] md:text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                                    Acciones
-                                </th>
+                                @if(auth()->user()->role === 'admin')
+                                    <th class="px-4 py-3 md:py-4 text-right text-[11px] md:text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                                        Acciones
+                                    </th>
+                                @endif
                             </tr>
                         </thead>
                         <tbody
@@ -103,11 +91,6 @@
                                             <div class="flex flex-wrap items-center gap-2">
                                                 <span class="font-semibold text-slate-900 text-sm md:text-base">
                                                     {{ $departamento->nombre }}
-                                                </span>
-                                                <span class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-medium
-                                                    {{ $departamento->activa ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-rose-50 text-rose-700 border border-rose-100' }}">
-                                                    <span class="h-1.5 w-1.5 rounded-full {{ $departamento->activa ? 'bg-emerald-400' : 'bg-rose-400' }}"></span>
-                                                    {{ $departamento->activa ? 'Activo' : 'Inactivo' }}
                                                 </span>
                                             </div>
                                             @if($departamento->direccion)
@@ -141,37 +124,41 @@
 
                                     <td class="px-4 py-4 md:py-5 align-top text-right">
                                         <div class="inline-flex flex-wrap justify-end gap-2 md:gap-3">
-                                            {{-- Botón editar --}}
-                                            <button
-                                                type="button"
-                                                data-id="{{ $departamento->id }}"
-                                                data-nombre="{{ $departamento->nombre }}"
-                                                data-direccion="{{ $departamento->direccion }}"
-                                                data-activa="{{ $departamento->activa ? '1' : '0' }}"
-                                                onclick="openEditDepartamentoModal(this)"
-                                                class="inline-flex items-center gap-1.5 rounded-full bg-amber-400/90 px-3.5 md:px-4 py-1.5 md:py-2 text-[11px] md:text-xs font-semibold text-white shadow-sm hover:bg-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
-                                            >
-                                                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                          d="M16.862 4.487l1.687-1.687a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z"/>
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                          d="M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"/>
-                                                </svg>
-                                                Editar
-                                            </button>
+                                            @if(auth()->user()->role === 'admin')
+                                                {{-- Botón editar --}}
+                                                <button
+                                                    type="button"
+                                                    data-id="{{ $departamento->id }}"
+                                                    data-nombre="{{ $departamento->nombre }}"
+                                                    data-direccion="{{ $departamento->direccion }}"
+                                                    data-activa="{{ $departamento->activa ? '1' : '0' }}"
+                                                    onclick="openEditDepartamentoModal(this)"
+                                                    class="inline-flex items-center gap-1.5 rounded-full bg-amber-400/90 px-3.5 md:px-4 py-1.5 md:py-2 text-[11px] md:text-xs font-semibold text-white shadow-sm hover:bg-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                                                >
+                                                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            d="M16.862 4.487l1.687-1.687a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z"/>
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            d="M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"/>
+                                                    </svg>
+                                                    Editar
+                                                </button>
+                                            @endif
 
-                                            {{-- Botón eliminar --}}
-                                            <button
-                                                type="button"
-                                                onclick="confirmDeleteDepartamento({{ $departamento->id }})"
-                                                class="inline-flex items-center gap-1.5 rounded-full bg-rose-500/90 px-3.5 md:px-4 py-1.5 md:py-2 text-[11px] md:text-xs font-semibold text-white shadow-sm hover:bg-rose-600 focus:outline-none focus:ring-1 focus:ring-rose-500"
-                                            >
-                                                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                          d="M6 7h12M10 11v6m4-6v6M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2M6 7l1 11a2 2 0 002 2h6a2 2 0 002-2l1-11"/>
-                                                </svg>
-                                                Eliminar
-                                            </button>
+                                            @if(auth()->user()->role === 'admin')
+                                                {{-- Botón eliminar --}}
+                                                <button
+                                                    type="button"
+                                                    onclick="confirmDeleteDepartamento({{ $departamento->id }})"
+                                                    class="inline-flex items-center gap-1.5 rounded-full bg-rose-500/90 px-3.5 md:px-4 py-1.5 md:py-2 text-[11px] md:text-xs font-semibold text-white shadow-sm hover:bg-rose-600 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                                                >
+                                                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            d="M6 7h12M10 11v6m4-6v6M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2M6 7l1 11a2 2 0 002 2h6a2 2 0 002-2l1-11"/>
+                                                    </svg>
+                                                    Eliminar
+                                                </button>
+                                            @endif
                                         </div>
                                     </td>
                                 </tr>

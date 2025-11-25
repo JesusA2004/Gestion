@@ -8,30 +8,24 @@
     // ====== Filtros en tiempo real (texto + estado) ======
     document.addEventListener('DOMContentLoaded', () => {
         const textInput  = document.getElementById('sucursal-search-text');
-        const statusSelect = document.getElementById('sucursal-filter-status');
 
-        if (!textInput || !statusSelect) return;
+        if (!textInput) return;
 
         const filterRows = () => {
             const text   = textInput.value.toLowerCase().trim();
-            const status = statusSelect.value; // '', '1', '0'
 
             const rows = document.querySelectorAll('tbody[data-sucursals] tr[data-sucursal-row]');
 
             rows.forEach(row => {
                 const nombre    = (row.dataset.nombre || '').toLowerCase();
                 const direccion = (row.dataset.direccion || '').toLowerCase();
-                const activa    = row.dataset.activa || '';
 
                 const matchesText =
                     !text ||
                     nombre.includes(text) ||
                     direccion.includes(text);
 
-                const matchesStatus =
-                    !status || activa === status;
-
-                if (matchesText && matchesStatus) {
+                if (matchesText) {
                     row.classList.remove('hidden');
                 } else {
                     row.classList.add('hidden');
@@ -40,7 +34,6 @@
         };
 
         textInput.addEventListener('input', filterRows);
-        statusSelect.addEventListener('change', filterRows);
     });
 
     // ====== Crear ======
@@ -60,10 +53,6 @@
                             class="mt-1 block w-full border rounded px-2 py-1 text-sm border-slate-200"
                             rows="3"></textarea>
                     </label>
-                    <label class="inline-flex items-center gap-2 text-sm mt-2">
-                        <input id="swal-activa" type="checkbox" class="rounded border-slate-300" checked />
-                        <span class="text-gray-700">Plaza activa</span>
-                    </label>
                 </div>
             `,
             focusConfirm: false,
@@ -74,14 +63,13 @@
             preConfirm: () => {
                 const nombre    = document.getElementById('swal-nombre').value.trim();
                 const direccion = document.getElementById('swal-direccion').value.trim();
-                const activa    = document.getElementById('swal-activa').checked ? 1 : 0;
 
                 if (!nombre) {
-                    Swal.showValidationMessage('El nombre de la sucursal es obligatorio');
+                    Swal.showValidationMessage('El nombre de la plaza es obligatorio');
                     return false;
                 }
 
-                return { nombre, direccion, activa };
+                return { nombre, direccion };
             }
         });
 
@@ -107,7 +95,7 @@
             await Swal.fire({
                 icon: 'success',
                 title: 'Guardado',
-                text: data.message || 'Sucursal registrada correctamente.',
+                text: data.message || 'Plaza registrada correctamente.',
                 confirmButtonColor: '#4f46e5',
             });
 
@@ -123,7 +111,6 @@
             id:        button.dataset.id,
             nombre:    button.dataset.nombre || '',
             direccion: button.dataset.direccion || '',
-            activa:    button.dataset.activa === '1',
         };
 
         const { value: formValues } = await Swal.fire({
@@ -142,10 +129,6 @@
                             class="mt-1 block w-full border rounded px-2 py-1 text-sm border-slate-200"
                             rows="3">${(sucursal.direccion || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea>
                     </label>
-                    <label class="inline-flex items-center gap-2 text-sm mt-2">
-                        <input id="swal-activa" type="checkbox" class="rounded border-slate-300" ${sucursal.activa ? 'checked' : ''} />
-                        <span class="text-gray-700">Plaza activa</span>
-                    </label>
                 </div>
             `,
             focusConfirm: false,
@@ -156,14 +139,13 @@
             preConfirm: () => {
                 const nombre    = document.getElementById('swal-nombre').value.trim();
                 const direccion = document.getElementById('swal-direccion').value.trim();
-                const activa    = document.getElementById('swal-activa').checked ? 1 : 0;
 
                 if (!nombre) {
                     Swal.showValidationMessage('El nombre de la sucursal es obligatorio');
                     return false;
                 }
 
-                return { nombre, direccion, activa };
+                return { nombre, direccion };
             }
         });
 
@@ -202,7 +184,7 @@
     // ====== Eliminar ======
     window.confirmDeleteSucursal = async function (id) {
         const result = await Swal.fire({
-            title: '¿Eliminar sucursal?',
+            title: '¿Eliminar plaza?',
             text: 'Esta acción no se puede deshacer.',
             icon: 'warning',
             showCancelButton: true,

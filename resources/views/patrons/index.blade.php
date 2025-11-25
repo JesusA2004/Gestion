@@ -47,42 +47,46 @@
                 </div>
             </div>
 
-            {{-- Alta rápida (se queda con POST normal) --}}
-            <div class="rounded-2xl bg-white shadow-sm border border-slate-200 px-4 py-4 sm:px-6 sm:py-5">
-                <h2 class="text-sm font-semibold text-slate-800 mb-3">
-                    Nuevo patrón / empresa
-                </h2>
-                <form
-                    method="POST"
-                    action="{{ route('patrons.store') }}"
-                    class="flex flex-col sm:flex-row gap-3 sm:items-end"
-                >
-                    @csrf
-                    <div class="flex-1">
-                        <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                            Nombre de la empresa
-                        </label>
-                        <input
-                            type="text"
-                            name="nombre"
-                            value="{{ old('nombre') }}"
-                            class="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2 text-sm text-slate-800 shadow-sm focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                        >
-                        @error('nombre')
-                            <p class="mt-1 text-xs text-rose-600">{{ $message }}</p>
-                        @enderror
-                    </div>
+            @if(auth()->user()->role === 'admin')
+                {{-- Alta rápida (se queda con POST normal) --}}
+                <div class="rounded-2xl bg-white shadow-sm border border-slate-200 px-4 py-4 sm:px-6 sm:py-5">
+                    <h2 class="text-sm font-semibold text-slate-800 mb-3">
+                        Nuevo patrón / empresa
+                    </h2>
+                    <form
+                        method="POST"
+                        action="{{ route('patrons.store') }}"
+                        class="flex flex-col sm:flex-row gap-3 sm:items-end"
+                    >
+                        @csrf
+                        <div class="flex-1">
+                            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                                Nombre de la empresa
+                            </label>
+                            <input
+                                type="text"
+                                name="nombre"
+                                value="{{ old('nombre') }}"
+                                class="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2 text-sm text-slate-800 shadow-sm focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            >
+                            @error('nombre')
+                                <p class="mt-1 text-xs text-rose-600">{{ $message }}</p>
+                            @enderror
+                        </div>
 
-                    <div class="sm:w-40">
-                        <button
-                            type="submit"
-                            class="w-full rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white shadow hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
-                        >
-                            Guardar
-                        </button>
-                    </div>
-                </form>
-            </div>
+                        <div class="sm:w-40">
+                            @if(auth()->user()->role === 'admin')
+                                <button
+                                    type="submit"
+                                    class="w-full rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white shadow hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+                                >
+                                    Guardar
+                                </button>
+                            @endif
+                        </div>
+                    </form>
+                </div>
+            @endif
 
             {{-- Tabla --}}
             <div class="overflow-hidden rounded-2xl bg-white shadow-md shadow-slate-200/60 border border-slate-100">
@@ -95,9 +99,11 @@
                             <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
                                 Fechas (creación / modificación)
                             </th>
-                            <th class="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                                Acciones
-                            </th>
+                            @if(auth()->user()->role === 'admin')
+                                <th class="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                                    Acciones
+                                </th>
+                            @endif
                         </tr>
                     </thead>
                     <tbody
@@ -133,7 +139,7 @@
                                 </td>
                                 <td class="px-4 py-3 align-top text-right">
                                     <div class="inline-flex flex-wrap justify-end gap-2">
-                                        {{-- EDITAR con Swal (usa form + PUT spoof) --}}
+                                        {{-- EDITAR --}}
                                         <form
                                             method="POST"
                                             action="{{ route('patrons.update', $patron) }}"
@@ -147,31 +153,35 @@
                                                 name="nombre"
                                                 value="{{ $patron->nombre }}"
                                             >
-
-                                            <button
-                                                type="button"
-                                                class="inline-flex items-center gap-1.5 rounded-full bg-amber-400/90 px-3 py-1.5 text-[11px] font-semibold text-white shadow-sm hover:bg-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
-                                                data-nombre="{{ $patron->nombre }}"
-                                                onclick="openEditPatronModal(this)"
-                                            >
-                                                Editar
-                                            </button>
+                                            @if(auth()->user()->role === 'admin')
+                                                <button
+                                                    type="button"
+                                                    class="inline-flex items-center gap-1.5 rounded-full bg-amber-400/90 px-3 py-1.5 text-[11px] font-semibold text-white shadow-sm hover:bg-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                                                    data-nombre="{{ $patron->nombre }}"
+                                                    onclick="openEditPatronModal(this)"
+                                                >
+                                                    Editar
+                                                </button>
+                                            @endif
                                         </form>
 
-                                        {{-- ELIMINAR con Swal (form + DELETE spoof) --}}
+                                        {{-- ELIMINAR --}}
                                         <form
                                             method="POST"
                                             action="{{ route('patrons.destroy', $patron) }}"
                                         >
                                             @csrf
                                             @method('DELETE')
-                                            <button
-                                                type="button"
-                                                class="inline-flex items-center gap-1.5 rounded-full bg-rose-500/90 px-3 py-1.5 text-[11px] font-semibold text-white shadow-sm hover:bg-rose-600 focus:outline-none focus:ring-1 focus:ring-rose-500"
-                                                onclick="confirmDeletePatron(this)"
-                                            >
-                                                Eliminar
-                                            </button>
+
+                                            @if(auth()->user()->role === 'admin')
+                                                <button
+                                                    type="button"
+                                                    class="inline-flex items-center gap-1.5 rounded-full bg-rose-500/90 px-3 py-1.5 text-[11px] font-semibold text-white shadow-sm hover:bg-rose-600 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                                                    onclick="confirmDeletePatron(this)"
+                                                >
+                                                    Eliminar
+                                                </button>
+                                            @endif
                                         </form>
                                     </div>
                                 </td>

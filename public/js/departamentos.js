@@ -4,16 +4,14 @@
     const csrfToken = config.csrfToken || '';
     const baseUrl   = config.baseUrl || '';
 
-    // ====== Filtros en tiempo real (texto + estado) ======
+    // ====== Filtros en tiempo real (texto) ======
     document.addEventListener('DOMContentLoaded', () => {
         const textInput   = document.getElementById('departamento-search-text');
-        const statusInput = document.getElementById('departamento-filter-status');
 
-        if (!textInput || !statusInput) return;
+        if (!textInput) return;
 
         const filterRows = () => {
             const text   = textInput.value.toLowerCase().trim();
-            const status = statusInput.value; // "", "1", "0"
 
             const rows = document.querySelectorAll(
                 'tbody[data-departamentos] tr[data-departamento-row]'
@@ -22,17 +20,13 @@
             rows.forEach(row => {
                 const nombre    = (row.dataset.nombre || '').toLowerCase();
                 const direccion = (row.dataset.direccion || '').toLowerCase();
-                const activa    = row.dataset.activa || '';
 
                 const matchesText =
                     !text ||
                     nombre.includes(text) ||
                     direccion.includes(text);
 
-                const matchesStatus =
-                    !status || activa === status;
-
-                if (matchesText && matchesStatus) {
+                if (matchesText) {
                     row.classList.remove('hidden');
                 } else {
                     row.classList.add('hidden');
@@ -41,7 +35,6 @@
         };
 
         textInput.addEventListener('input', filterRows);
-        statusInput.addEventListener('change', filterRows);
     });
 
     // ====== Crear ======
@@ -60,14 +53,6 @@
                         <input id="swal-direccion" type="text"
                             class="mt-1 block w-full border rounded px-2 py-1 text-sm border-slate-200" />
                     </label>
-                    <label class="block text-sm">
-                        <span class="text-gray-700">Estado</span>
-                        <select id="swal-activa"
-                            class="mt-1 block w-full border rounded px-2 py-1 text-sm border-slate-200">
-                            <option value="1" selected>Activo</option>
-                            <option value="0">Inactivo</option>
-                        </select>
-                    </label>
                 </div>
             `,
             focusConfirm: false,
@@ -78,7 +63,6 @@
             preConfirm: () => {
                 const nombre    = document.getElementById('swal-nombre').value.trim();
                 const direccion = document.getElementById('swal-direccion').value.trim();
-                const activa    = document.getElementById('swal-activa').value;
 
                 if (!nombre) {
                     Swal.showValidationMessage('El nombre del departamento es obligatorio');
@@ -88,7 +72,6 @@
                 return {
                     nombre,
                     direccion,
-                    activa: activa === '1' ? 1 : 0,
                 };
             }
         });
@@ -131,7 +114,6 @@
             id: button.dataset.id,
             nombre: button.dataset.nombre || '',
             direccion: button.dataset.direccion || '',
-            activa: button.dataset.activa === '1' ? '1' : '0',
         };
 
         const { value: formValues } = await Swal.fire({
@@ -150,14 +132,6 @@
                             class="mt-1 block w-full border rounded px-2 py-1 text-sm border-slate-200"
                             value="${departamento.direccion || ''}" />
                     </label>
-                    <label class="block text-sm">
-                        <span class="text-gray-700">Estado</span>
-                        <select id="swal-activa"
-                            class="mt-1 block w-full border rounded px-2 py-1 text-sm border-slate-200">
-                            <option value="1" ${departamento.activa === '1' ? 'selected' : ''}>Activo</option>
-                            <option value="0" ${departamento.activa === '0' ? 'selected' : ''}>Inactivo</option>
-                        </select>
-                    </label>
                 </div>
             `,
             focusConfirm: false,
@@ -168,7 +142,6 @@
             preConfirm: () => {
                 const nombre    = document.getElementById('swal-nombre').value.trim();
                 const direccion = document.getElementById('swal-direccion').value.trim();
-                const activa    = document.getElementById('swal-activa').value;
 
                 if (!nombre) {
                     Swal.showValidationMessage('El nombre del departamento es obligatorio');
@@ -178,7 +151,6 @@
                 return {
                     nombre,
                     direccion,
-                    activa: activa === '1' ? 1 : 0,
                 };
             }
         });

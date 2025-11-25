@@ -4,6 +4,7 @@
   const baseUrl = cfg.baseUrl || "";
   const csrfToken = cfg.csrfToken || "";
   const lookups = cfg.lookups || {};
+  const canManage = !!cfg.canManage;
 
   /* =================== Helpers =================== */
 
@@ -40,35 +41,6 @@
     return new Date(value + "T00:00:00");
   }
 
-  function cambiarEstado(id, nuevoEstado) {
-      Swal.fire({
-          title: '¿Confirmar cambio?',
-          text: `El empleado pasará a estado: ${nuevoEstado}`,
-          icon: 'warning',
-          showCancelButton: true,
-          confirmButtonText: 'Sí, cambiar',
-          cancelButtonText: 'Cancelar'
-      }).then(res => {
-          if (!res.isConfirmed) return;
-
-          fetch(`/empleados/${id}/estado`, {
-              method: "PATCH",
-              headers: {
-                  "Content-Type": "application/json",
-                  "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').content
-              },
-              body: JSON.stringify({ estado: nuevoEstado })
-          })
-          .then(r => r.json())
-          .then(resp => {
-              if (resp.ok) {
-                  Swal.fire('Estado actualizado', '', 'success');
-                  location.reload();
-              }
-          })
-      });
-  }
-
   /* =================== Filtros en tiempo real =================== */
 
   document.addEventListener("DOMContentLoaded", () => {
@@ -103,7 +75,7 @@
 
       rows().forEach((row) => {
         const search = (row.dataset.search || "").toLowerCase();
-        const rowEstado = row.dataset.estado || "";
+        const rowEstado = row.dataset.estadoImss || "";
         const rowPatron = row.dataset.patronId || "";
         const rowSucursal = row.dataset.sucursalId || "";
         const rowDepto = row.dataset.departamentoId || "";
@@ -165,13 +137,13 @@
     applyFilters();
   });
 
-  /* =================== Construcción de selects lookup =================== */
+  /* =================== Lookups =================== */
 
-  function buildLookupOptions(items, value, labelKey = "nombre") {
+  function buildLookupOptions(items, valueKey, labelKey = "nombre") {
     const opts = items
       .map(
         (item) =>
-          `<option value="${item.id}">${item[labelKey] || ""}</option>`
+          `<option value="${item[valueKey]}">${item[labelKey] || ""}</option>`
       )
       .join("");
     const placeholder =
@@ -179,7 +151,7 @@
     return placeholder + opts;
   }
 
-  /* =================== Plantilla HTML del formulario =================== */
+  /* =================== Formulario empleado =================== */
 
   function empleadoFormHtml(initial) {
     const patrones = asArray(lookups.patrones);
@@ -216,7 +188,7 @@
       <div class="empleados-section empleados-section-open" data-section>
         <button type="button" class="empleados-section-header" data-section-toggle>
           <span class="empleados-section-title">Datos personales y laborales</span>
-          <span class="empleados-section-subtitle">Nombre, estado y fechas principales</span>
+          <span class="empleados-section-subtitle">Nombre, estado IMSS y fechas principales</span>
           <span class="empleados-section-arrow" aria-hidden="true">▾</span>
         </button>
         <div class="empleados-section-body">
@@ -252,25 +224,16 @@
 
           <div class="empleados-grid-2">
             <div>
-              <label class="empleados-label">Estado <span class="empleados-required">*</span></label>
+              <label class="empleados-label">Estado IMSS <span class="empleados-required">*</span></label>
               <select id="emp-estado" class="empleados-select">
-                <option value="alta" ${v("estado", "alta") === "alta" ? "selected" : ""}>Alta</option>
-                <option value="baja" ${v("estado") === "baja" ? "selected" : ""}>Baja</option>
+                <option value="alta" ${v("estado_imss", "alta") === "alta" ? "selected" : ""}>Alta</option>
+                <option value="inactivo" ${v("estado_imss") === "inactivo" ? "selected" : ""}>Inactivo</option>
               </select>
             </div>
             <div>
               <label class="empleados-label">Fecha ingreso <span class="empleados-required">*</span></label>
               <input id="emp-fechaIngreso" type="date" class="empleados-input"
                      value="${v("fecha_ingreso", "")}">
-            </div>
-          </div>
-
-          <div class="empleados-grid-2">
-            <div>
-              <label class="empleados-label">Fecha baja</label>
-              <input id="emp-fechaBaja" type="date" class="empleados-input"
-                     value="${v("fecha_baja", "")}">
-              <p class="empleados-help">Sólo si el empleado ya está de baja.</p>
             </div>
           </div>
         </div>
@@ -373,8 +336,8 @@
       <!-- Sección 4 -->
       <div class="empleados-section" data-section>
         <button type="button" class="empleados-section-header" data-section-toggle>
-          <span class="empleados-section-title">Datos bancarios y sueldos</span>
-          <span class="empleados-section-subtitle">Información opcional para pagos y facturación</span>
+          <span class="empleados-section-title">Datos bancarios y SDI</span>
+          <span class="empleados-section-subtitle">Información opcional para pagos y cálculo de SDI</span>
           <span class="empleados-section-arrow" aria-hidden="true">▾</span>
         </button>
         <div class="empleados-section-body">
@@ -410,27 +373,6 @@
 
           <div class="empleados-grid-2">
             <div>
-              <label class="empleados-label">Sueldo diario bruto</label>
-              <input id="emp-sueldoBruto" type="number" step="0.01" class="empleados-input"
-                     placeholder="0.00"
-                     value="${v("sueldo_diario_bruto", "")}">
-            </div>
-            <div>
-              <label class="empleados-label">Sueldo diario neto</label>
-              <input id="emp-sueldoNeto" type="number" step="0.01" class="empleados-input"
-                     placeholder="0.00"
-                     value="${v("sueldo_diario_neto", "")}">
-            </div>
-          </div>
-
-          <div class="empleados-grid-2">
-            <div>
-              <label class="empleados-label">Salario diario IMSS</label>
-              <input id="emp-salarioImss" type="number" step="0.01" class="empleados-input"
-                     placeholder="0.00"
-                     value="${v("salario_diario_imss", "")}">
-            </div>
-            <div>
               <label class="empleados-label">SDI</label>
               <input id="emp-sdi" type="number" step="0.01" class="empleados-input"
                      placeholder="0.00"
@@ -465,9 +407,8 @@
       apellidoPaterno: getVal("emp-apellidoPaterno"),
       apellidoMaterno: getVal("emp-apellidoMaterno") || null,
       numero_trabajador: getVal("emp-numeroTrabajador"),
-      estado: getVal("emp-estado") || "alta",
+      estado_imss: getVal("emp-estado") || "alta",
       fecha_ingreso: getVal("emp-fechaIngreso"),
-      fecha_baja: getVal("emp-fechaBaja") || null,
       patron_id: getVal("emp-patron"),
       sucursal_id: getVal("emp-sucursal"),
       departamento_id: getVal("emp-departamento"),
@@ -482,13 +423,9 @@
       cuenta_bancaria: getVal("emp-cuentaBancaria") || null,
       tarjeta: getVal("emp-tarjeta") || null,
       clabe_interbancaria: getVal("emp-clabe") || null,
-      sueldo_diario_bruto: getVal("emp-sueldoBruto") || null,
-      sueldo_diario_neto: getVal("emp-sueldoNeto") || null,
-      salario_diario_imss: getVal("emp-salarioImss") || null,
       sdi: getVal("emp-sdi") || null,
     };
 
-    // Validaciones rápidas de front
     if (!payload.nombres) {
       Swal.showValidationMessage("El campo Nombres es obligatorio.");
       return null;
@@ -561,6 +498,11 @@
   /* =================== Crear =================== */
 
   window.openCreateEmpleadoModal = function () {
+    if (!canManage) {
+      showErrorAlert("No tienes permisos para registrar empleados.");
+      return;
+    }
+
     Swal.fire({
       title: "Nuevo empleado",
       html: empleadoFormHtml({}),
@@ -587,9 +529,7 @@
         Swal.showLoading();
 
         return sendEmpleado("POST", `${baseUrl}/empleados`, payload)
-          .then((data) => {
-            return data;
-          })
+          .then((data) => data)
           .catch((error) => {
             handleCrudError(error, "Error al registrar el empleado.");
             return false;
@@ -609,6 +549,11 @@
   /* =================== Editar =================== */
 
   window.openEditEmpleadoModal = function (btn) {
+    if (!canManage) {
+      showErrorAlert("No tienes permisos para editar empleados.");
+      return;
+    }
+
     const dataset = btn.dataset || {};
     const initial = {
       id: dataset.id,
@@ -616,9 +561,8 @@
       apellidoPaterno: dataset.apellidoPaterno || "",
       apellidoMaterno: dataset.apellidoMaterno || "",
       numero_trabajador: dataset.numeroTrabajador || "",
-      estado: dataset.estado || "alta",
+      estado_imss: dataset.estado || "alta",
       fecha_ingreso: dataset.fechaIngreso || "",
-      fecha_baja: dataset.fechaBaja || "",
       patron_id: dataset.patronId || "",
       sucursal_id: dataset.sucursalId || "",
       departamento_id: dataset.departamentoId || "",
@@ -633,9 +577,6 @@
       cuenta_bancaria: dataset.cuentaBancaria || "",
       tarjeta: dataset.tarjeta || "",
       clabe_interbancaria: dataset.clabe || "",
-      sueldo_diario_bruto: dataset.sueldoBruto || "",
-      sueldo_diario_neto: dataset.sueldoNeto || "",
-      salario_diario_imss: dataset.salarioImss || "",
       sdi: dataset.sdi || "",
     };
 
@@ -658,7 +599,6 @@
       didOpen: () => {
         initSectionToggles();
 
-        // Seleccionar valores de combos
         const setVal = (id, val) => {
           const el = document.getElementById(id);
           if (el && val) el.value = val;
@@ -725,13 +665,13 @@
             </div>
             <div class="empleados-grid-2">
               <div>
-                <p class="empleados-view-label">Estado</p>
+                <p class="empleados-view-label">Estado IMSS</p>
                 <p class="empleados-view-value">${(d.estado || "").toUpperCase()}</p>
               </div>
               <div>
                 <p class="empleados-view-label">Fechas</p>
                 <p class="empleados-view-value">
-                  Ingreso: ${d.fechaIngreso || "—"} · Baja: ${d.fechaBaja || "—"}
+                  Ingreso: ${d.fechaIngreso || "—"} · Alta IMSS: ${d.fechaAltaImss || "—"}
                 </p>
               </div>
             </div>
@@ -821,12 +761,17 @@
     });
   };
 
-  /* =================== Cambiar estado rápido =================== */
+  /* =================== Cambiar estado IMSS =================== */
 
   window.openToggleEstadoEmpleado = function (id, currentEstado) {
+    if (!canManage) {
+      showErrorAlert("No tienes permisos para cambiar el estado IMSS.");
+      return;
+    }
+
     Swal.fire({
-      title: "Cambiar estado",
-      text: "Puedes activar o dar de baja al empleado rápidamente.",
+      title: "Cambiar estado IMSS",
+      text: "Puedes activar o marcar como inactivo al empleado.",
       icon: "question",
       showCancelButton: true,
       confirmButtonText: "Guardar",
@@ -835,10 +780,10 @@
       showCloseButton: true,
       html: `
         <div class="mt-3">
-          <label class="empleados-label mb-2 block">Estado</label>
+          <label class="empleados-label mb-2 block">Estado IMSS</label>
           <select id="emp-toggle-estado" class="empleados-select w-full">
             <option value="alta" ${currentEstado === "alta" ? "selected" : ""}>Alta</option>
-            <option value="baja" ${currentEstado === "baja" ? "selected" : ""}>Baja</option>
+            <option value="inactivo" ${currentEstado === "inactivo" ? "selected" : ""}>Inactivo</option>
           </select>
         </div>
       `,
@@ -860,14 +805,14 @@
             "X-CSRF-TOKEN": csrfToken,
             Accept: "application/json",
           },
-          body: JSON.stringify({ estado: nuevo }),
+          body: JSON.stringify({ estado_imss: nuevo }),
         })
           .then((res) => {
             if (!res.ok) return res.json().then((d) => Promise.reject(d));
             return res.json();
           })
           .catch((err) => {
-            handleCrudError(err, "No se pudo actualizar el estado.");
+            handleCrudError(err, "No se pudo actualizar el estado IMSS.");
             return false;
           });
       },
@@ -884,6 +829,11 @@
   /* =================== Eliminar =================== */
 
   window.confirmDeleteEmpleado = function (id) {
+    if (!canManage) {
+      showErrorAlert("No tienes permisos para eliminar empleados.");
+      return;
+    }
+
     Swal.fire({
       title: "¿Eliminar empleado?",
       text: "Esta acción no se puede deshacer.",
@@ -932,4 +882,253 @@
         });
     });
   };
+
+  /* =================== Periodos de empleado =================== */
+
+  function buildPeriodosHtml(empleadoNombre, periodos) {
+    if (!periodos.length) {
+      return `
+        <p class="text-sm text-slate-600 mb-4">
+          No hay periodos registrados para este empleado.
+        </p>
+        ${
+          canManage
+            ? '<p class="text-xs text-slate-400 mb-2">Puedes registrar altas, bajas o reingresos desde el botón "Agregar periodo".</p>'
+            : ""
+        }
+        <div class="mt-3">
+          ${
+            canManage
+              ? '<button type="button" class="empleados-btn-cta" id="btn-add-periodo">Agregar periodo</button>'
+              : ""
+          }
+        </div>
+      `;
+    }
+
+    const rows = periodos
+      .map((p) => {
+        const fechaAlta = p.fecha_alta || "—";
+        const fechaBaja = p.fecha_baja || "—";
+        const tipo = (p.tipo_alta || "").toUpperCase();
+        const motivo = p.motivo_baja || "—";
+
+        return `
+          <tr class="border-b border-slate-100">
+            <td class="px-3 py-2 text-xs md:text-sm text-slate-800">${tipo}</td>
+            <td class="px-3 py-2 text-xs md:text-sm text-slate-700">${fechaAlta}</td>
+            <td class="px-3 py-2 text-xs md:text-sm text-slate-700">${fechaBaja}</td>
+            <td class="px-3 py-2 text-xs md:text-sm text-slate-700">${motivo}</td>
+          </tr>
+        `;
+      })
+      .join("");
+
+    return `
+      <p class="text-sm text-slate-700 mb-3">
+        Historial de periodos (altas, bajas y reingresos) del empleado:
+        <span class="font-semibold">${empleadoNombre}</span>
+      </p>
+
+      <div class="overflow-x-auto rounded-xl border border-slate-200 mb-3">
+        <table class="min-w-full text-xs md:text-sm">
+          <thead class="bg-slate-50">
+            <tr>
+              <th class="px-3 py-2 text-left font-semibold text-slate-500 uppercase text-[10px]">Tipo</th>
+              <th class="px-3 py-2 text-left font-semibold text-slate-500 uppercase text-[10px]">Fecha alta</th>
+              <th class="px-3 py-2 text-left font-semibold text-slate-500 uppercase text-[10px]">Fecha baja</th>
+              <th class="px-3 py-2 text-left font-semibold text-slate-500 uppercase text-[10px]">Motivo baja</th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-slate-100">
+            ${rows}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="mt-3 flex justify-end">
+        ${
+          canManage
+            ? '<button type="button" class="empleados-btn-cta" id="btn-add-periodo">Agregar periodo</button>'
+            : ""
+        }
+      </div>
+    `;
+  }
+
+  async function fetchPeriodos(empleadoId) {
+    const res = await fetch(`${baseUrl}/empleados/${empleadoId}/periodos`, {
+      headers: {
+        Accept: "application/json",
+      },
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw data;
+    }
+
+    const data = await res.json();
+    return Array.isArray(data.data) ? data.data : data;
+  }
+
+  function periodoFormHtml() {
+    const today = new Date().toISOString().slice(0, 10);
+    return `
+      <div class="empleados-form-wrapper">
+        <div class="empleados-grid-2">
+          <div>
+            <label class="empleados-label">Tipo de alta <span class="empleados-required">*</span></label>
+            <select id="per-tipo" class="empleados-select">
+              <option value="">Selecciona...</option>
+              <option value="alta">Alta</option>
+              <option value="reingreso">Reingreso</option>
+              <option value="baja">Baja</option>
+            </select>
+          </div>
+          <div>
+            <label class="empleados-label">Fecha de alta <span class="empleados-required">*</span></label>
+            <input id="per-fecha-alta" type="date" class="empleados-input" value="${today}">
+          </div>
+        </div>
+
+        <div class="empleados-grid-2 mt-3">
+          <div>
+            <label class="empleados-label">Fecha de baja</label>
+            <input id="per-fecha-baja" type="date" class="empleados-input">
+            <p class="empleados-help">Solo para periodos de baja.</p>
+          </div>
+          <div>
+            <label class="empleados-label">Motivo de baja</label>
+            <textarea id="per-motivo" class="empleados-input" rows="3"
+              placeholder="Opcional, solo si aplica baja."></textarea>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  async function sendPeriodo(method, url, payload) {
+    const res = await fetch(url, {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-TOKEN": csrfToken,
+        Accept: "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw data;
+    }
+
+    return res.json();
+  }
+
+  window.openPeriodosEmpleadoModal = function (btn) {
+    const empleadoId = btn.dataset.empleadoId;
+    const empleadoNombre = btn.dataset.empleadoNombre || "";
+
+    Swal.fire({
+      title: "Historial de periodos",
+      html: '<p class="text-sm text-slate-600">Cargando periodos...</p>',
+      width: "80%",
+      maxWidth: 900,
+      showCloseButton: true,
+      showConfirmButton: true,
+      confirmButtonText: "Cerrar",
+      didOpen: () => {
+        Swal.showLoading();
+        fetchPeriodos(empleadoId)
+          .then((periodos) => {
+            Swal.update({
+              html: buildPeriodosHtml(empleadoNombre, periodos),
+            });
+
+            const addBtn = document.getElementById("btn-add-periodo");
+            if (addBtn && canManage) {
+              addBtn.addEventListener("click", () => {
+                openCreatePeriodoModal(empleadoId, empleadoNombre);
+              });
+            }
+          })
+          .catch(() => {
+            Swal.update({
+              html: '<p class="text-sm text-rose-600">No se pudieron cargar los periodos.</p>',
+            });
+          })
+          .finally(() => {
+            Swal.hideLoading();
+          });
+      },
+    });
+  };
+
+  function openCreatePeriodoModal(empleadoId, empleadoNombre) {
+    if (!canManage) {
+      showErrorAlert("No tienes permisos para registrar periodos.");
+      return;
+    }
+
+    Swal.fire({
+      title: "Registrar periodo",
+      html: periodoFormHtml(),
+      width: "600px",
+      showCloseButton: true,
+      showCancelButton: true,
+      confirmButtonText: "Guardar",
+      cancelButtonText: "Cancelar",
+      reverseButtons: true,
+      focusConfirm: false,
+      preConfirm: () => {
+        const tipo = (document.getElementById("per-tipo") || { value: "" }).value;
+        const fechaAlta = (document.getElementById("per-fecha-alta") || { value: "" }).value;
+        const fechaBaja = (document.getElementById("per-fecha-baja") || { value: "" }).value;
+        const motivo = (document.getElementById("per-motivo") || { value: "" }).value.trim();
+
+        if (!tipo) {
+          Swal.showValidationMessage("Selecciona el tipo de alta.");
+          return false;
+        }
+        if (!fechaAlta) {
+          Swal.showValidationMessage("La fecha de alta es obligatoria.");
+          return false;
+        }
+
+        const payload = {
+          empleado_id: empleadoId,
+          tipo_alta: tipo,
+          fecha_alta: fechaAlta,
+          fecha_baja: fechaBaja || null,
+          motivo_baja: motivo || null,
+        };
+
+        Swal.showLoading();
+
+        return sendPeriodo("POST", `${baseUrl}/empleados/${empleadoId}/periodos`, payload)
+          .then((data) => data)
+          .catch((err) => {
+            handleCrudError(err, "No se pudo registrar el periodo.");
+            return false;
+          });
+      },
+    }).then((result) => {
+      if (!result.isConfirmed || !result.value) return;
+
+      Swal.fire({
+        icon: "success",
+        title: "Periodo registrado",
+        text: "El periodo se guardó correctamente.",
+        confirmButtonColor: "#4f46e5",
+      }).then(() => {
+        // Reabrir historial actualizado
+        const fakeBtn = {
+          dataset: { empleadoId, empleadoNombre },
+        };
+        window.openPeriodosEmpleadoModal(fakeBtn);
+      });
+    });
+  }
 })();

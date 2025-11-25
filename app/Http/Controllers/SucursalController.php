@@ -41,7 +41,7 @@ class SucursalController extends Controller
 
         return response()->json([
             'ok'      => true,
-            'message' => 'Sucursal registrada correctamente.',
+            'message' => 'Plaza registrada correctamente.',
             'data'    => new SucursalResource($sucursal),
         ]);
     }
@@ -58,7 +58,7 @@ class SucursalController extends Controller
 
         return response()->json([
             'ok'      => true,
-            'message' => 'Sucursal actualizada correctamente.',
+            'message' => 'Plaza actualizada correctamente.',
             'data'    => new SucursalResource($sucursal),
         ]);
     }
@@ -69,7 +69,7 @@ class SucursalController extends Controller
 
         return response()->json([
             'ok'      => true,
-            'message' => 'Sucursal eliminada correctamente.',
+            'message' => 'Plaza eliminada correctamente.',
         ]);
     }
 

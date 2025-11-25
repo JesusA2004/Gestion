@@ -22,8 +22,8 @@ class SucursalRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'nombre.required' => 'El nombre de la sucursal es obligatorio.',
-            'nombre.max'      => 'El nombre de la sucursal no debe exceder 255 caracteres.',
+            'nombre.required' => 'El nombre de la plaza es obligatorio.',
+            'nombre.max'      => 'El nombre de la plaza no debe exceder 255 caracteres.',
         ];
     }
 }
