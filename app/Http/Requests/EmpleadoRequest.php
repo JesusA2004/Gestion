@@ -47,16 +47,16 @@ class EmpleadoRequest extends FormRequest
             'tarjeta'             => ['nullable', 'string', 'max:20'],
             'clabe_interbancaria' => ['nullable', 'string', 'max:20'],
             'banco'               => ['nullable', 'string', 'max:50'],
-            'sdi'                 => ['nullable', 'numeric'],
+            'sdi'                 => ['required', 'numeric'],
 
             // FACTURACIÓN
             'empresa_facturar'        => ['nullable', 'string', 'max:255'],
-            'importe_factura_mensual' => ['nullable', 'numeric'],
+            'importe_factura_mensual' => ['required', 'numeric'],
 
             // OTROS
             'fecha_ingreso'     => ['required', 'date'],
             'numero_reingresos' => ['required', 'integer', 'min:0'],
-            'color'             => ['nullable', 'string', 'max:20'],
+            'color'             => ['required', 'string', 'max:20'],
         ];
     }
 

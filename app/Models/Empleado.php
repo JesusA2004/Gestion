@@ -53,7 +53,7 @@ class Empleado extends Model
         'estado_imss'              => 'string',
     ];
 
-    public function periodo()
+    public function periodos()
     {
         return $this->hasMany(EmpleadoPeriodo::class, 'empleado_id');
     }

@@ -6,32 +6,152 @@
   const lookups = cfg.lookups || {};
   const canManage = !!cfg.canManage;
 
+  // Lista de colores permitidos (solo los de la tabla de Excel)
+  const EMPLOYEE_COLORS = [
+    { value: "#ff66ff", label: "Incapacidad" },                         // rosa
+    { value: "#ff0000", label: "Baja" },                                // rojo
+    { value: "#00b0f0", label: "Modificar - INMAG - JSIG" },            // azul claro
+    { value: "#00ffff", label: "Alta" },                                // turquesa
+    { value: "#ffff00", label: "Correcciones" },                        // amarillo
+    { value: "#0070c0", label: "No se pueden cambiar razón social" },   // azul
+    { value: "#808080", label: "Pendiente respuesta para baja" },       // gris
+  ];
+
+  // Lista de estados de la republica mexicana
+  const MEX_STATES = [
+    "Aguascalientes",
+    "Baja California",
+    "Baja California Sur",
+    "Campeche",
+    "Chiapas",
+    "Chihuahua",
+    "Ciudad de México",
+    "Coahuila",
+    "Colima",
+    "Durango",
+    "Estado de México",
+    "Guanajuato",
+    "Guerrero",
+    "Hidalgo",
+    "Jalisco",
+    "Michoacán",
+    "Morelos",
+    "Nayarit",
+    "Nuevo León",
+    "Oaxaca",
+    "Puebla",
+    "Querétaro",
+    "Quintana Roo",
+    "San Luis Potosí",
+    "Sinaloa",
+    "Sonora",
+    "Tabasco",
+    "Tamaulipas",
+    "Tlaxcala",
+    "Veracruz",
+    "Yucatán",
+    "Zacatecas",
+  ];
+
   /* =================== Helpers =================== */
 
   function asArray(v) {
     return Array.isArray(v) ? v : [];
   }
 
-  function handleCrudError(error, fallbackMessage) {
-    let message = fallbackMessage || "Ocurrió un error inesperado.";
+  /**
+   * Normaliza el mensaje de error para el usuario:
+   * - Usa mensajes de validación (422) si vienen del back.
+   * - Mapea errores de duplicado (CURP, RFC, IMSS, num. trabajador).
+   * - Esconde detalles técnicos tipo SQLSTATE.
+   */
+  function normalizeErrorMessage(error, fallbackMessage) {
+    let message = fallbackMessage || "Ocurrió un error al procesar la información.";
 
-    if (error && error.errors) {
+    if (!error) return message;
+
+    // 1) Errores de validación estilo Laravel (422)
+    if (error.errors && typeof error.errors === "object") {
       const firstKey = Object.keys(error.errors)[0];
-      if (firstKey && error.errors[firstKey][0]) {
-        message = error.errors[firstKey][0];
+      if (firstKey && Array.isArray(error.errors[firstKey]) && error.errors[firstKey][0]) {
+        return error.errors[firstKey][0];
       }
-    } else if (error && error.message) {
-      message = error.message;
     }
 
+    const raw = error.message || error.error || "";
+    if (typeof raw === "string" && raw) {
+      const lower = raw.toLowerCase();
+
+      // 2) Errores de duplicado (llaves únicas)
+      if (lower.includes("duplicate entry")) {
+        // CURP única
+        if (lower.includes("empleados_curp_unique")) {
+          return "Ya existe un empleado registrado con esa CURP. Verifica que no esté duplicado.";
+        }
+
+        // RFC único
+        if (lower.includes("empleados_rfc_unique")) {
+          return "Ya existe un empleado registrado con ese RFC. Verifica que no esté duplicado.";
+        }
+
+        // Número IMSS único
+        if (lower.includes("empleados_numero_imss_unique") || lower.includes("numero_imss_unique")) {
+          return "Ya existe un empleado registrado con ese número de IMSS.";
+        }
+
+        // Número trabajador único
+        if (lower.includes("empleados_numero_trabajador_unique") || lower.includes("numero_trabajador_unique")) {
+          return "Ya existe un empleado con ese número de trabajador.";
+        }
+
+        // Cualquier otro índice único relacionado
+        return "Ya existe un registro con datos que deben ser únicos (CURP, RFC, IMSS o número de trabajador). Revisa la información capturada.";
+      }
+
+      // 3) Errores de red / fetch
+      if (
+        lower.includes("failed to fetch") ||
+        lower.includes("networkerror") ||
+        lower.includes("network error")
+      ) {
+        return "No se pudo conectar con el servidor. Intenta nuevamente en unos minutos.";
+      }
+
+      // 4) Para errores 4xx con mensaje 'humano' desde el back
+      if (
+        error.status &&
+        error.status >= 400 &&
+        error.status < 500 &&
+        !lower.startsWith("sqlstate")
+      ) {
+        return raw;
+      }
+
+      // Cualquier SQLSTATE u otro stack técnico NO se muestra tal cual.
+    }
+
+    return message;
+  }
+
+  function handleCrudError(error, fallbackMessage) {
+    console.error("Error en operación de empleados:", error);
+    const message = normalizeErrorMessage(error, fallbackMessage);
     Swal.showValidationMessage(message);
   }
 
-  function showErrorAlert(message) {
+  function showErrorAlert(messageOrError, fallbackMessage) {
+    // Permite pasar directamente el error crudo o un string
+    let text;
+    if (typeof messageOrError === "string") {
+      text = messageOrError;
+    } else {
+      text = normalizeErrorMessage(messageOrError, fallbackMessage || "Ocurrió un error.");
+    }
+
     Swal.fire({
       icon: "error",
       title: "Error",
-      text: message || "Ocurrió un error.",
+      text,
       confirmButtonColor: "#4f46e5",
     });
   }
@@ -63,15 +183,15 @@
 
     function applyFilters() {
       const text = (textInput.value || "").toLowerCase().trim();
-      const estado = estadoSel.value || "";
-      const patronId = patronSel.value || "";
-      const sucursalId = sucursalSel.value || "";
-      const deptoId = deptoSel.value || "";
-      const supId = supSel.value || "";
-      const fIngDesde = parseDate(ingresoDesde.value);
-      const fIngHasta = parseDate(ingresoHasta.value);
-      const fImssDesde = parseDate(imssDesde.value);
-      const fImssHasta = parseDate(imssHasta.value);
+      const estado = estadoSel ? estadoSel.value || "" : "";
+      const patronId = patronSel ? patronSel.value || "" : "";
+      const sucursalId = sucursalSel ? sucursalSel.value || "" : "";
+      const deptoId = deptoSel ? deptoSel.value || "" : "";
+      const supId = supSel ? supSel.value || "" : "";
+      const fIngDesde = parseDate(ingresoDesde ? ingresoDesde.value : "");
+      const fIngHasta = parseDate(ingresoHasta ? ingresoHasta.value : "");
+      const fImssDesde = parseDate(imssDesde ? imssDesde.value : "");
+      const fImssHasta = parseDate(imssHasta ? imssHasta.value : "");
 
       rows().forEach((row) => {
         const search = (row.dataset.search || "").toLowerCase();
@@ -121,15 +241,15 @@
     if (clearBtn) {
       clearBtn.addEventListener("click", () => {
         textInput.value = "";
-        estadoSel.value = "";
-        patronSel.value = "";
-        sucursalSel.value = "";
-        deptoSel.value = "";
-        supSel.value = "";
-        ingresoDesde.value = "";
-        ingresoHasta.value = "";
-        imssDesde.value = "";
-        imssHasta.value = "";
+        if (estadoSel) estadoSel.value = "";
+        if (patronSel) patronSel.value = "";
+        if (sucursalSel) sucursalSel.value = "";
+        if (deptoSel) deptoSel.value = "";
+        if (supSel) supSel.value = "";
+        if (ingresoDesde) ingresoDesde.value = "";
+        if (ingresoHasta) ingresoHasta.value = "";
+        if (imssDesde) imssDesde.value = "";
+        if (imssHasta) imssHasta.value = "";
         applyFilters();
       });
     }
@@ -146,9 +266,15 @@
           `<option value="${item[valueKey]}">${item[labelKey] || ""}</option>`
       )
       .join("");
-    const placeholder =
-      '<option value="">Selecciona una opción…</option>';
+    const placeholder = '<option value="">Selecciona una opción…</option>';
     return placeholder + opts;
+  }
+
+  // Funcion para manejar estados de la republica mexicana
+  function buildEstadoOptions() {
+    return MEX_STATES
+      .map((name) => `<option value="${name}">${name}</option>`)
+      .join("");
   }
 
   /* =================== Formulario empleado =================== */
@@ -160,9 +286,7 @@
     const supervisores = asArray(lookups.supervisores);
 
     const supervisorLabel = (s) =>
-      [s.nombres, s.apellidoPaterno, s.apellidoMaterno].filter(Boolean).join(
-        " "
-      );
+      [s.nombres, s.apellidoPaterno, s.apellidoMaterno].filter(Boolean).join(" ");
 
     const supervisorOptions =
       '<option value="">Sin supervisor</option>' +
@@ -224,16 +348,39 @@
 
           <div class="empleados-grid-2">
             <div>
+              <label class="empleados-label">Estado donde labora <span class="empleados-required">*</span></label>
+              <input
+                id="emp-estadoLaboral"
+                type="text"
+                class="empleados-input"
+                list="empleados-estados-list"
+                placeholder="Buscar Estado..."
+                value="${v("estado", "")}">
+              <datalist id="empleados-estados-list">
+                ${buildEstadoOptions()}
+              </datalist>
+              <p class="empleados-help">Lista estática de estados de la República Mexicana.</p>
+            </div>
+            <div>
               <label class="empleados-label">Estado IMSS <span class="empleados-required">*</span></label>
               <select id="emp-estado" class="empleados-select">
                 <option value="alta" ${v("estado_imss", "alta") === "alta" ? "selected" : ""}>Alta</option>
                 <option value="inactivo" ${v("estado_imss") === "inactivo" ? "selected" : ""}>Inactivo</option>
               </select>
             </div>
+          </div>
+
+          <div class="empleados-grid-2">
             <div>
               <label class="empleados-label">Fecha ingreso <span class="empleados-required">*</span></label>
               <input id="emp-fechaIngreso" type="date" class="empleados-input"
                      value="${v("fecha_ingreso", "")}">
+            </div>
+            <div>
+              <label class="empleados-label">Número de reingresos</label>
+              <input id="emp-numeroReingresos" type="number" class="empleados-input"
+                     value="${v("numero_reingresos", "0")}" readonly>
+              <p class="empleados-help">Se calcula a partir del historial de periodos.</p>
             </div>
           </div>
         </div>
@@ -274,6 +421,18 @@
               <select id="emp-supervisor" class="empleados-select">
                 ${supervisorOptions}
               </select>
+            </div>
+          </div>
+
+          <div class="empleados-grid-2">
+            <div>
+              <label class="empleados-label">Empresa a facturar</label>
+              <input id="emp-empresaFacturar" type="text" class="empleados-input"
+                     placeholder="Empresa con la que se factura"
+                     value="${v("empresa_facturar", "")}">
+            </div>
+            <div>
+              <!-- vacío a propósito; el importe se captura en la sección de Datos bancarios -->
             </div>
           </div>
         </div>
@@ -336,23 +495,24 @@
       <!-- Sección 4 -->
       <div class="empleados-section" data-section>
         <button type="button" class="empleados-section-header" data-section-toggle>
-          <span class="empleados-section-title">Datos bancarios y SDI</span>
-          <span class="empleados-section-subtitle">Información opcional para pagos y cálculo de SDI</span>
+          <span class="empleados-section-title">Datos bancarios, SDI y color</span>
+          <span class="empleados-section-subtitle">Información opcional para pagos y visualización</span>
           <span class="empleados-section-arrow" aria-hidden="true">▾</span>
         </button>
+
         <div class="empleados-section-body">
           <div class="empleados-grid-2">
             <div>
               <label class="empleados-label">Banco</label>
               <input id="emp-banco" type="text" class="empleados-input"
-                     placeholder="Nombre del banco"
-                     value="${v("banco")}">
+                    placeholder="Nombre del banco"
+                    value="${v("banco")}">
             </div>
             <div>
               <label class="empleados-label">Cuenta bancaria</label>
               <input id="emp-cuentaBancaria" type="text" class="empleados-input"
-                     placeholder="Número de cuenta"
-                     value="${v("cuenta_bancaria")}">
+                    placeholder="Número de cuenta"
+                    value="${v("cuenta_bancaria")}">
             </div>
           </div>
 
@@ -360,24 +520,58 @@
             <div>
               <label class="empleados-label">Tarjeta</label>
               <input id="emp-tarjeta" type="text" class="empleados-input"
-                     placeholder="Número de tarjeta"
-                     value="${v("tarjeta")}">
+                    placeholder="Número de tarjeta"
+                    value="${v("tarjeta")}">
             </div>
             <div>
               <label class="empleados-label">CLABE interbancaria</label>
               <input id="emp-clabe" type="text" class="empleados-input"
-                     placeholder="18 dígitos"
-                     value="${v("clabe_interbancaria")}">
+                    placeholder="18 dígitos"
+                    value="${v("clabe_interbancaria")}">
             </div>
           </div>
 
           <div class="empleados-grid-2">
             <div>
-              <label class="empleados-label">SDI</label>
+              <label class="empleados-label">
+                SDI <span class="empleados-required">*</span>
+              </label>
               <input id="emp-sdi" type="number" step="0.01" class="empleados-input"
-                     placeholder="0.00"
-                     value="${v("sdi", "")}">
+                    placeholder="Ej. 238.00"
+                    value="${v("sdi", "")}">
             </div>
+            <div>
+              <label class="empleados-label">
+                Importe factura mensual <span class="empleados-required">*</span>
+              </label>
+              <input id="emp-importeFactura" type="number" step="0.01" class="empleados-input"
+                    placeholder="Ej. 8700.00"
+                    value="${v("importe_factura_mensual", "")}">
+            </div>
+          </div>
+
+          <div class="mt-4">
+            <label class="empleados-label">
+              Color del empleado <span class="empleados-required">*</span>
+            </label>
+            <div class="empleados-color-options" id="emp-color-group">
+              ${EMPLOYEE_COLORS
+                .map((c) => {
+                  const selected = v("color", "") || EMPLOYEE_COLORS[0].value;
+                  const checked = selected === c.value ? "checked" : "";
+                  return `
+                    <label class="empleados-color-option">
+                      <input type="radio" name="emp-color" value="${c.value}" ${checked}>
+                      <span class="empleados-color-swatch" style="background:${c.value};"></span>
+                      <span class="empleados-color-label">${c.label}</span>
+                    </label>
+                  `;
+                })
+                .join("")}
+            </div>
+            <p class="empleados-help">
+              Solo puedes elegir un color. Cada color representa un estatus como en la tabla de Excel.
+            </p>
           </div>
         </div>
       </div>
@@ -397,9 +591,28 @@
       });
   }
 
+  // (Queda legacy, pero no rompe nada al no existir emp-color)
+  function initColorPreview() {
+    const colorInput = document.getElementById("emp-color");
+    const colorHex = document.getElementById("emp-color-hex");
+    if (!colorInput || !colorHex) return;
+
+    const sync = () => {
+      colorHex.textContent = colorInput.value || "";
+    };
+
+    colorInput.addEventListener("input", sync);
+    sync();
+  }
+
   function collectEmpleadoFormValues(id) {
     const getVal = (sel) =>
       (document.getElementById(sel) || { value: "" }).value.trim();
+
+    const getRadioVal = (name) => {
+      const el = document.querySelector(`input[name="${name}"]:checked`);
+      return el ? el.value : "";
+    };
 
     const payload = {
       id: id || null,
@@ -407,12 +620,16 @@
       apellidoPaterno: getVal("emp-apellidoPaterno"),
       apellidoMaterno: getVal("emp-apellidoMaterno") || null,
       numero_trabajador: getVal("emp-numeroTrabajador"),
+      estado: getVal("emp-estadoLaboral"),
       estado_imss: getVal("emp-estado") || "alta",
       fecha_ingreso: getVal("emp-fechaIngreso"),
+      numero_reingresos: getVal("emp-numeroReingresos") || null,
       patron_id: getVal("emp-patron"),
       sucursal_id: getVal("emp-sucursal"),
       departamento_id: getVal("emp-departamento"),
       supervisor_id: getVal("emp-supervisor") || null,
+      empresa_facturar: getVal("emp-empresaFacturar") || null,
+      importe_factura_mensual: getVal("emp-importeFactura"),
       numero_imss: getVal("emp-numeroImss"),
       registro_patronal: getVal("emp-registroPatronal"),
       codigo_postal: getVal("emp-codigoPostal") || null,
@@ -423,53 +640,97 @@
       cuenta_bancaria: getVal("emp-cuentaBancaria") || null,
       tarjeta: getVal("emp-tarjeta") || null,
       clabe_interbancaria: getVal("emp-clabe") || null,
-      sdi: getVal("emp-sdi") || null,
+      sdi: getVal("emp-sdi"),
+      color: getRadioVal("emp-color"),
     };
 
+    // Validaciones front-friendly
     if (!payload.nombres) {
       Swal.showValidationMessage("El campo Nombres es obligatorio.");
       return null;
     }
+
     if (!payload.apellidoPaterno) {
       Swal.showValidationMessage("El Apellido paterno es obligatorio.");
       return null;
     }
+
     if (!payload.numero_trabajador) {
-      Swal.showValidationMessage(
-        "El Número de trabajador es obligatorio."
-      );
+      Swal.showValidationMessage("El Número de trabajador es obligatorio.");
       return null;
     }
+
+    if (!payload.estado) {
+      Swal.showValidationMessage("El estado donde labora el empleado es obligatorio.");
+      return null;
+    }
+
+    if (payload.estado) {
+      const match = MEX_STATES.find(
+        (name) => name.toLowerCase() === payload.estado.toLowerCase()
+      );
+
+      if (!match) {
+        Swal.showValidationMessage("Selecciona un estado válido de la lista.");
+        return null;
+      }
+
+      // Siempre se manda al back con el mismo formato
+      payload.estado = match;
+    }
+
     if (!payload.fecha_ingreso) {
       Swal.showValidationMessage("La fecha de ingreso es obligatoria.");
       return null;
     }
+
     if (!payload.patron_id) {
       Swal.showValidationMessage("Debes seleccionar un patrón / empresa.");
       return null;
     }
+
     if (!payload.sucursal_id) {
       Swal.showValidationMessage("Debes seleccionar una sucursal.");
       return null;
     }
+
     if (!payload.departamento_id) {
       Swal.showValidationMessage("Debes seleccionar un departamento.");
       return null;
     }
+
     if (!payload.numero_imss) {
       Swal.showValidationMessage("El número IMSS es obligatorio.");
       return null;
     }
+
     if (!payload.registro_patronal) {
       Swal.showValidationMessage("El registro patronal es obligatorio.");
       return null;
     }
+
     if (!payload.curp) {
       Swal.showValidationMessage("La CURP es obligatoria.");
       return null;
     }
+
     if (!payload.rfc) {
       Swal.showValidationMessage("El RFC es obligatorio.");
+      return null;
+    }
+
+    if (!payload.importe_factura_mensual) {
+      Swal.showValidationMessage("El importe de factura mensual es obligatorio. Captura el monto que se factura por este empleado.");
+      return null;
+    }
+
+    if (!payload.sdi) {
+      Swal.showValidationMessage("El SDI es obligatorio. Ingresa el salario diario integrado del empleado.");
+      return null;
+    }
+
+    if (!payload.color) {
+      Swal.showValidationMessage("Debes seleccionar un color para el empleado según la tabla de estatus.");
       return null;
     }
 
@@ -477,22 +738,33 @@
   }
 
   async function sendEmpleado(method, url, payload) {
-    const response = await fetch(url, {
-      method,
-      headers: {
-        "Content-Type": "application/json",
-        "X-CSRF-TOKEN": csrfToken,
-        Accept: "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
+    try {
+      const response = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-TOKEN": csrfToken,
+          Accept: "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
 
-    if (!response.ok) {
-      const data = await response.json().catch(() => ({}));
-      throw data;
+      if (!response.ok) {
+        let data = {};
+        try {
+          data = await response.json();
+        } catch (e) {
+          data = {};
+        }
+        data.status = response.status;
+        throw data;
+      }
+
+      return await response.json();
+    } catch (err) {
+      // Re-throw para que lo maneje handleCrudError en el flujo de Swal
+      throw err;
     }
-
-    return response.json();
   }
 
   /* =================== Crear =================== */
@@ -521,6 +793,7 @@
       },
       didOpen: () => {
         initSectionToggles();
+        initColorPreview();
       },
       preConfirm: () => {
         const payload = collectEmpleadoFormValues(null);
@@ -561,8 +834,10 @@
       apellidoPaterno: dataset.apellidoPaterno || "",
       apellidoMaterno: dataset.apellidoMaterno || "",
       numero_trabajador: dataset.numeroTrabajador || "",
-      estado_imss: dataset.estado || "alta",
+      estado_imss: dataset.estadoImss || dataset.estado || "alta",
+      estado: dataset.estadoLaboral || "",
       fecha_ingreso: dataset.fechaIngreso || "",
+      numero_reingresos: dataset.numeroReingresos || "0",
       patron_id: dataset.patronId || "",
       sucursal_id: dataset.sucursalId || "",
       departamento_id: dataset.departamentoId || "",
@@ -578,6 +853,9 @@
       tarjeta: dataset.tarjeta || "",
       clabe_interbancaria: dataset.clabe || "",
       sdi: dataset.sdi || "",
+      empresa_facturar: dataset.empresaFacturar || "",
+      importe_factura_mensual: dataset.importeFacturaMensual || "",
+      color: dataset.color || "",
     };
 
     Swal.fire({
@@ -598,10 +876,13 @@
       },
       didOpen: () => {
         initSectionToggles();
+        initColorPreview();
 
         const setVal = (id, val) => {
           const el = document.getElementById(id);
-          if (el && val) el.value = val;
+          if (el && val !== undefined && val !== null && val !== "") {
+            el.value = val;
+          }
         };
         setVal("emp-patron", initial.patron_id);
         setVal("emp-sucursal", initial.sucursal_id);
@@ -665,14 +946,24 @@
             </div>
             <div class="empleados-grid-2">
               <div>
-                <p class="empleados-view-label">Estado IMSS</p>
-                <p class="empleados-view-value">${(d.estado || "").toUpperCase()}</p>
+                <p class="empleados-view-label">Estado donde labora</p>
+                <p class="empleados-view-value">${d.estadoLaboral || d.estado || "—"}</p>
               </div>
+              <div>
+                <p class="empleados-view-label">Estado IMSS</p>
+                <p class="empleados-view-value">${(d.estadoImss || d.estado || "").toUpperCase()}</p>
+              </div>
+            </div>
+            <div class="empleados-grid-2">
               <div>
                 <p class="empleados-view-label">Fechas</p>
                 <p class="empleados-view-value">
                   Ingreso: ${d.fechaIngreso || "—"} · Alta IMSS: ${d.fechaAltaImss || "—"}
                 </p>
+              </div>
+              <div>
+                <p class="empleados-view-label">Número de reingresos</p>
+                <p class="empleados-view-value">${d.numeroReingresos || "0"}</p>
               </div>
             </div>
           </div>
@@ -701,6 +992,16 @@
               <div>
                 <p class="empleados-view-label">Supervisor</p>
                 <p class="empleados-view-value">${supervisor}</p>
+              </div>
+            </div>
+            <div class="empleados-grid-2">
+              <div>
+                <p class="empleados-view-label">Empresa a facturar</p>
+                <p class="empleados-view-value">${d.empresaFacturar || "—"}</p>
+              </div>
+              <div>
+                <p class="empleados-view-label">Importe factura mensual</p>
+                <p class="empleados-view-value">${d.importeFacturaMensual || "—"}</p>
               </div>
             </div>
           </div>
@@ -739,6 +1040,48 @@
               <div>
                 <p class="empleados-view-label">Código postal</p>
                 <p class="empleados-view-value">${d.codigoPostal || "—"}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="empleados-section empleados-section-open" data-section>
+          <div class="empleados-section-header empleados-section-header-static">
+            <span class="empleados-section-title">Datos bancarios y visuales</span>
+          </div>
+          <div class="empleados-section-body">
+            <div class="empleados-grid-2">
+              <div>
+                <p class="empleados-view-label">Banco</p>
+                <p class="empleados-view-value">${d.banco || "—"}</p>
+              </div>
+              <div>
+                <p class="empleados-view-label">Cuenta bancaria</p>
+                <p class="empleados-view-value">${d.cuentaBancaria || "—"}</p>
+              </div>
+            </div>
+            <div class="empleados-grid-2">
+              <div>
+                <p class="empleados-view-label">Tarjeta</p>
+                <p class="empleados-view-value">${d.tarjeta || "—"}</p>
+              </div>
+              <div>
+                <p class="empleados-view-label">CLABE interbancaria</p>
+                <p class="empleados-view-value">${d.clabe || "—"}</p>
+              </div>
+            </div>
+            <div class="empleados-grid-2">
+              <div>
+                <p class="empleados-view-label">SDI</p>
+                <p class="empleados-view-value">${d.sdi || "—"}</p>
+              </div>
+              <div>
+                <p class="empleados-view-label">Color del empleado</p>
+                <p class="empleados-view-value">
+                  <span class="inline-block w-4 h-4 rounded-full align-middle mr-2"
+                        style="background:${d.color || "#0ea5e9"};"></span>
+                  <span>${d.color || "—"}</span>
+                </p>
               </div>
             </div>
           </div>
@@ -808,7 +1151,12 @@
           body: JSON.stringify({ estado_imss: nuevo }),
         })
           .then((res) => {
-            if (!res.ok) return res.json().then((d) => Promise.reject(d));
+            if (!res.ok) {
+              return res.json().then((d) => {
+                d.status = res.status;
+                return Promise.reject(d);
+              });
+            }
             return res.json();
           })
           .catch((err) => {
@@ -862,7 +1210,12 @@
         },
       })
         .then((res) => {
-          if (!res.ok) return res.json().then((d) => Promise.reject(d));
+          if (!res.ok) {
+            return res.json().then((d) => {
+              d.status = res.status;
+              return Promise.reject(d);
+            });
+          }
           return res.json();
         })
         .then(() => {
@@ -874,11 +1227,9 @@
           }).then(() => window.location.reload());
         })
         .catch((err) => {
+          console.error("Error al eliminar empleado:", err);
           Swal.close();
-          showErrorAlert(
-            (err && err.message) ||
-              "Ocurrió un error al eliminar el empleado."
-          );
+          showErrorAlert(err, "Ocurrió un error al eliminar el empleado.");
         });
     });
   };
@@ -964,7 +1315,13 @@
     });
 
     if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
+      let data = {};
+      try {
+        data = await res.json();
+      } catch (e) {
+        data = {};
+      }
+      data.status = res.status;
       throw data;
     }
 
@@ -1020,7 +1377,13 @@
     });
 
     if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
+      let data = {};
+      try {
+        data = await res.json();
+      } catch (e) {
+        data = {};
+      }
+      data.status = res.status;
       throw data;
     }
 
@@ -1054,7 +1417,8 @@
               });
             }
           })
-          .catch(() => {
+          .catch((err) => {
+            console.error("Error al cargar periodos:", err);
             Swal.update({
               html: '<p class="text-sm text-rose-600">No se pudieron cargar los periodos.</p>',
             });
@@ -1123,7 +1487,6 @@
         text: "El periodo se guardó correctamente.",
         confirmButtonColor: "#4f46e5",
       }).then(() => {
-        // Reabrir historial actualizado
         const fakeBtn = {
           dataset: { empleadoId, empleadoNombre },
         };

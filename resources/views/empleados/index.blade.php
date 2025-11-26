@@ -351,31 +351,48 @@
                                                 data-apellido-paterno="{{ $empleado->apellidoPaterno }}"
                                                 data-apellido-materno="{{ $empleado->apellidoMaterno }}"
                                                 data-numero-trabajador="{{ $empleado->numero_trabajador }}"
-                                                data-estado="{{ $empleado->estado_imss }}"
+
+                                                {{-- Estado donde labora (estado de la república) --}}
+                                                data-estado-laboral="{{ $empleado->estado }}"
+
+                                                {{-- Estado IMSS (alta / inactivo) --}}
+                                                data-estado-imss="{{ $empleado->estado_imss }}"
+
                                                 data-fecha-ingreso="{{ optional($empleado->fecha_ingreso)->format('Y-m-d') }}"
-                                                data-fecha-baja=""
+                                                data-numero-reingresos="{{ $empleado->numero_reingresos ?? 0 }}"
+
                                                 data-patron-id="{{ $empleado->patron_id }}"
                                                 data-patron-nombre="{{ optional($empleado->patron)->nombre }}"
+
                                                 data-sucursal-id="{{ $empleado->sucursal_id }}"
                                                 data-sucursal-nombre="{{ optional($empleado->sucursal)->nombre }}"
+
                                                 data-departamento-id="{{ $empleado->departamento_id }}"
                                                 data-departamento-nombre="{{ optional($empleado->departamento)->nombre }}"
+
                                                 data-supervisor-id="{{ $empleado->supervisor_id }}"
                                                 data-supervisor-nombre="{{ optional($empleado->supervisor)->nombre_completo }}"
+
                                                 data-numero-imss="{{ $empleado->numero_imss }}"
                                                 data-registro-patronal="{{ $empleado->registro_patronal }}"
                                                 data-codigo-postal="{{ $empleado->codigo_postal }}"
                                                 data-fecha-alta-imss="{{ optional($empleado->fecha_alta_imss)->format('Y-m-d') }}"
                                                 data-curp="{{ $empleado->curp }}"
                                                 data-rfc="{{ $empleado->rfc }}"
+
+                                                {{-- Bancarios --}}
                                                 data-banco="{{ $empleado->banco }}"
                                                 data-cuenta-bancaria="{{ $empleado->cuenta_bancaria }}"
                                                 data-tarjeta="{{ $empleado->tarjeta }}"
                                                 data-clabe="{{ $empleado->clabe_interbancaria }}"
-                                                data-sueldo-bruto=""
-                                                data-sueldo-neto=""
-                                                data-salario-imss=""
+
+                                                {{-- Facturación --}}
+                                                data-empresa-facturar="{{ $empleado->empresa_facturar }}"
+                                                data-importe-factura-mensual="{{ $empleado->importe_factura_mensual }}"
+
+                                                {{-- SDI y color --}}
                                                 data-sdi="{{ $empleado->sdi }}"
+                                                data-color="{{ $empleado->color }}"
                                             >
                                                 Ver
                                             </button>
