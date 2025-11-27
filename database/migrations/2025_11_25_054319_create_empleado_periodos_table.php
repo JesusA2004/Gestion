@@ -25,7 +25,7 @@ return new class extends Migration
             $table->date('fecha_baja')->nullable();
 
             // Tipo de alta (texto libre, lo controlas en el front)
-            $table->string('tipo_alta');
+            $table->string('tipo_alta')->nullable();
 
             // Motivo de baja (opcional, texto largo)
             $table->text('motivo_baja')->nullable();

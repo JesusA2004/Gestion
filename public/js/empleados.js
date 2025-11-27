@@ -60,10 +60,7 @@
   }
 
   /**
-   * Normaliza el mensaje de error para el usuario:
-   * - Usa mensajes de validación (422) si vienen del back.
-   * - Mapea errores de duplicado (CURP, RFC, IMSS, num. trabajador).
-   * - Esconde detalles técnicos tipo SQLSTATE.
+   * Normaliza el mensaje de error para el usuario.
    */
   function normalizeErrorMessage(error, fallbackMessage) {
     let message = fallbackMessage || "Ocurrió un error al procesar la información.";
@@ -84,27 +81,22 @@
 
       // 2) Errores de duplicado (llaves únicas)
       if (lower.includes("duplicate entry")) {
-        // CURP única
         if (lower.includes("empleados_curp_unique")) {
           return "Ya existe un empleado registrado con esa CURP. Verifica que no esté duplicado.";
         }
 
-        // RFC único
         if (lower.includes("empleados_rfc_unique")) {
           return "Ya existe un empleado registrado con ese RFC. Verifica que no esté duplicado.";
         }
 
-        // Número IMSS único
         if (lower.includes("empleados_numero_imss_unique") || lower.includes("numero_imss_unique")) {
           return "Ya existe un empleado registrado con ese número de IMSS.";
         }
 
-        // Número trabajador único
         if (lower.includes("empleados_numero_trabajador_unique") || lower.includes("numero_trabajador_unique")) {
           return "Ya existe un empleado con ese número de trabajador.";
         }
 
-        // Cualquier otro índice único relacionado
         return "Ya existe un registro con datos que deben ser únicos (CURP, RFC, IMSS o número de trabajador). Revisa la información capturada.";
       }
 
@@ -117,7 +109,7 @@
         return "No se pudo conectar con el servidor. Intenta nuevamente en unos minutos.";
       }
 
-      // 4) Para errores 4xx con mensaje 'humano' desde el back
+      // 4) Errores 4xx con mensaje legible desde el back
       if (
         error.status &&
         error.status >= 400 &&
@@ -126,8 +118,6 @@
       ) {
         return raw;
       }
-
-      // Cualquier SQLSTATE u otro stack técnico NO se muestra tal cual.
     }
 
     return message;
@@ -140,7 +130,6 @@
   }
 
   function showErrorAlert(messageOrError, fallbackMessage) {
-    // Permite pasar directamente el error crudo o un string
     let text;
     if (typeof messageOrError === "string") {
       text = messageOrError;
@@ -156,105 +145,197 @@
     });
   }
 
-  function parseDate(value) {
-    if (!value) return null;
-    return new Date(value + "T00:00:00");
+  /* =================== Filtros server-side (AJAX) =================== */
+
+  function getFilterElements() {
+    return {
+      textInput: document.getElementById("empleado-search-text"),
+      estadoSel: document.getElementById("empleado-filter-estado"),
+      patronSel: document.getElementById("empleado-filter-patron"),
+      sucursalSel: document.getElementById("empleado-filter-sucursal"),
+      deptoSel: document.getElementById("empleado-filter-departamento"),
+      supSel: document.getElementById("empleado-filter-supervisor"),
+      ingresoDesde: document.getElementById("empleado-filter-ingreso-desde"),
+      ingresoHasta: document.getElementById("empleado-filter-ingreso-hasta"),
+      imssDesde: document.getElementById("empleado-filter-imss-desde"),
+      imssHasta: document.getElementById("empleado-filter-imss-hasta"),
+      clearBtn: document.getElementById("empleado-filter-clear"),
+      tableWrapper: document.getElementById("empleados-table-wrapper"),
+    };
   }
 
-  /* =================== Filtros en tiempo real =================== */
+  function collectFilterParams(els) {
+    const params = {};
 
-  document.addEventListener("DOMContentLoaded", () => {
-    const textInput = document.getElementById("empleado-search-text");
-    const estadoSel = document.getElementById("empleado-filter-estado");
-    const patronSel = document.getElementById("empleado-filter-patron");
-    const sucursalSel = document.getElementById("empleado-filter-sucursal");
-    const deptoSel = document.getElementById("empleado-filter-departamento");
-    const supSel = document.getElementById("empleado-filter-supervisor");
-    const ingresoDesde = document.getElementById("empleado-filter-ingreso-desde");
-    const ingresoHasta = document.getElementById("empleado-filter-ingreso-hasta");
-    const imssDesde = document.getElementById("empleado-filter-imss-desde");
-    const imssHasta = document.getElementById("empleado-filter-imss-hasta");
-    const clearBtn = document.getElementById("empleado-filter-clear");
+    const text = (els.textInput?.value || "").trim();
+    if (text) params.q = text;
 
-    if (!textInput) return;
+    const estado = els.estadoSel?.value || "";
+    if (estado) params.estado_imss = estado;
 
-    const rows = () =>
-      document.querySelectorAll("tbody[data-empleados] tr[data-empleado-row]");
+    const patronId = els.patronSel?.value || "";
+    if (patronId) params.patron_id = patronId;
 
-    function applyFilters() {
-      const text = (textInput.value || "").toLowerCase().trim();
-      const estado = estadoSel ? estadoSel.value || "" : "";
-      const patronId = patronSel ? patronSel.value || "" : "";
-      const sucursalId = sucursalSel ? sucursalSel.value || "" : "";
-      const deptoId = deptoSel ? deptoSel.value || "" : "";
-      const supId = supSel ? supSel.value || "" : "";
-      const fIngDesde = parseDate(ingresoDesde ? ingresoDesde.value : "");
-      const fIngHasta = parseDate(ingresoHasta ? ingresoHasta.value : "");
-      const fImssDesde = parseDate(imssDesde ? imssDesde.value : "");
-      const fImssHasta = parseDate(imssHasta ? imssHasta.value : "");
+    const sucursalId = els.sucursalSel?.value || "";
+    if (sucursalId) params.sucursal_id = sucursalId;
 
-      rows().forEach((row) => {
-        const search = (row.dataset.search || "").toLowerCase();
-        const rowEstado = row.dataset.estadoImss || "";
-        const rowPatron = row.dataset.patronId || "";
-        const rowSucursal = row.dataset.sucursalId || "";
-        const rowDepto = row.dataset.departamentoId || "";
-        const rowSup = row.dataset.supervisorId || "";
-        const fIng = parseDate(row.dataset.fechaIngreso || "");
-        const fImss = parseDate(row.dataset.fechaAltaImss || "");
+    const deptoId = els.deptoSel?.value || "";
+    if (deptoId) params.departamento_id = deptoId;
 
-        let visible = true;
+    const supId = els.supSel?.value || "";
+    if (supId) params.supervisor_id = supId;
 
-        if (text && !search.includes(text)) visible = false;
-        if (estado && rowEstado !== estado) visible = false;
-        if (patronId && rowPatron !== patronId) visible = false;
-        if (sucursalId && rowSucursal !== sucursalId) visible = false;
-        if (deptoId && rowDepto !== deptoId) visible = false;
-        if (supId && rowSup !== supId) visible = false;
+    const ingresoDesde = els.ingresoDesde?.value || "";
+    if (ingresoDesde) params.ingreso_desde = ingresoDesde;
 
-        if (fIngDesde && (!fIng || fIng < fIngDesde)) visible = false;
-        if (fIngHasta && (!fIng || fIng > fIngHasta)) visible = false;
-        if (fImssDesde && (!fImss || fImss < fImssDesde)) visible = false;
-        if (fImssHasta && (!fImss || fImss > fImssHasta)) visible = false;
+    const ingresoHasta = els.ingresoHasta?.value || "";
+    if (ingresoHasta) params.ingreso_hasta = ingresoHasta;
 
-        row.style.display = visible ? "" : "none";
+    const imssDesde = els.imssDesde?.value || "";
+    if (imssDesde) params.imss_desde = imssDesde;
+
+    const imssHasta = els.imssHasta?.value || "";
+    if (imssHasta) params.imss_hasta = imssHasta;
+
+    return params;
+  }
+
+  let filterDebounce = null;
+
+  async function fetchEmpleadosWithFilters(url) {
+    const els = getFilterElements();
+    if (!els.tableWrapper) return;
+
+    const params = collectFilterParams(els);
+
+    let targetUrl;
+    if (url) {
+      const u = new URL(url, window.location.origin);
+      Object.entries(params).forEach(([k, v]) => {
+        if (v === "" || v === null || typeof v === "undefined") {
+          u.searchParams.delete(k);
+        } else {
+          u.searchParams.set(k, v);
+        }
       });
+      targetUrl = u.toString();
+    } else {
+      const u = new URL(`${baseUrl}/empleados`, window.location.origin);
+      Object.entries(params).forEach(([k, v]) => {
+        if (v) u.searchParams.set(k, v);
+      });
+      targetUrl = u.toString();
     }
 
-    [
-      textInput,
-      estadoSel,
-      patronSel,
-      sucursalSel,
-      deptoSel,
-      supSel,
-      ingresoDesde,
-      ingresoHasta,
-      imssDesde,
-      imssHasta,
-    ].forEach((el) => {
+    // Indicador simple de carga
+    els.tableWrapper.classList.add("opacity-60", "pointer-events-none");
+
+    try {
+      const res = await fetch(targetUrl, {
+        headers: {
+          "X-Requested-With": "XMLHttpRequest",
+          Accept: "application/json",
+        },
+      });
+
+      if (!res.ok) {
+        let data = {};
+        try {
+          data = await res.json();
+        } catch (e) {
+          data = {};
+        }
+        data.status = res.status;
+        throw data;
+      }
+
+      const data = await res.json();
+      if (!data || typeof data.html !== "string") {
+        throw { message: "Respuesta inválida del servidor." };
+      }
+
+      els.tableWrapper.innerHTML = data.html;
+      bindPaginationLinks(); // re-bind paginación AJAX
+    } catch (err) {
+      console.error("Error cargando empleados:", err);
+      showErrorAlert(err, "No se pudieron cargar los empleados con los filtros seleccionados.");
+    } finally {
+      els.tableWrapper.classList.remove("opacity-60", "pointer-events-none");
+    }
+  }
+
+  function triggerFilterFetch(url) {
+    if (filterDebounce) clearTimeout(filterDebounce);
+    filterDebounce = setTimeout(() => {
+      fetchEmpleadosWithFilters(url);
+    }, 350);
+  }
+
+  function bindFilterEvents() {
+    const els = getFilterElements();
+    if (!els.textInput || !els.tableWrapper) return;
+
+    const inputs = [
+      els.textInput,
+      els.ingresoDesde,
+      els.ingresoHasta,
+      els.imssDesde,
+      els.imssHasta,
+    ];
+    const selects = [
+      els.estadoSel,
+      els.patronSel,
+      els.sucursalSel,
+      els.deptoSel,
+      els.supSel,
+    ];
+
+    inputs.forEach((el) => {
       if (!el) return;
-      const evt = el.tagName === "INPUT" ? "input" : "change";
-      el.addEventListener(evt, applyFilters);
+      el.addEventListener("input", () => triggerFilterFetch(null));
     });
 
-    if (clearBtn) {
-      clearBtn.addEventListener("click", () => {
-        textInput.value = "";
-        if (estadoSel) estadoSel.value = "";
-        if (patronSel) patronSel.value = "";
-        if (sucursalSel) sucursalSel.value = "";
-        if (deptoSel) deptoSel.value = "";
-        if (supSel) supSel.value = "";
-        if (ingresoDesde) ingresoDesde.value = "";
-        if (ingresoHasta) ingresoHasta.value = "";
-        if (imssDesde) imssDesde.value = "";
-        if (imssHasta) imssHasta.value = "";
-        applyFilters();
+    selects.forEach((el) => {
+      if (!el) return;
+      el.addEventListener("change", () => triggerFilterFetch(null));
+    });
+
+    if (els.clearBtn) {
+      els.clearBtn.addEventListener("click", () => {
+        if (els.textInput) els.textInput.value = "";
+        if (els.estadoSel) els.estadoSel.value = "";
+        if (els.patronSel) els.patronSel.value = "";
+        if (els.sucursalSel) els.sucursalSel.value = "";
+        if (els.deptoSel) els.deptoSel.value = "";
+        if (els.supSel) els.supSel.value = "";
+        if (els.ingresoDesde) els.ingresoDesde.value = "";
+        if (els.ingresoHasta) els.ingresoHasta.value = "";
+        if (els.imssDesde) els.imssDesde.value = "";
+        if (els.imssHasta) els.imssHasta.value = "";
+
+        triggerFilterFetch(null);
       });
     }
+  }
 
-    applyFilters();
+  function bindPaginationLinks() {
+    const wrapper = document.getElementById("empleados-table-wrapper");
+    if (!wrapper) return;
+
+    const links = wrapper.querySelectorAll(".pagination a, [rel='next'], [rel='prev']");
+    links.forEach((link) => {
+      link.addEventListener("click", (e) => {
+        e.preventDefault();
+        const href = link.getAttribute("href");
+        if (!href) return;
+        triggerFilterFetch(href);
+      });
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    bindFilterEvents();
+    bindPaginationLinks();
   });
 
   /* =================== Lookups =================== */
@@ -270,14 +351,13 @@
     return placeholder + opts;
   }
 
-  // Funcion para manejar estados de la republica mexicana
   function buildEstadoOptions() {
     return MEX_STATES
       .map((name) => `<option value="${name}">${name}</option>`)
       .join("");
   }
 
-  /* =================== Formulario empleado =================== */
+  /* =================== Formulario empleado (Swal) =================== */
 
   function empleadoFormHtml(initial) {
     const patrones = asArray(lookups.patrones);
@@ -431,9 +511,7 @@
                      placeholder="Empresa con la que se factura"
                      value="${v("empresa_facturar", "")}">
             </div>
-            <div>
-              <!-- vacío a propósito; el importe se captura en la sección de Datos bancarios -->
-            </div>
+            <div></div>
           </div>
         </div>
       </div>
@@ -581,7 +659,7 @@
 
   function initSectionToggles() {
     document
-      .querySelectorAll(".empleados-section-header")
+      .querySelectorAll(".empleados-section-header[data-section-toggle]")
       .forEach((btn) => {
         btn.addEventListener("click", () => {
           const section = btn.closest("[data-section]");
@@ -591,7 +669,7 @@
       });
   }
 
-  // (Queda legacy, pero no rompe nada al no existir emp-color)
+  // Legacy (no afecta si no existe)
   function initColorPreview() {
     const colorInput = document.getElementById("emp-color");
     const colorHex = document.getElementById("emp-color-hex");
@@ -675,7 +753,6 @@
         return null;
       }
 
-      // Siempre se manda al back con el mismo formato
       payload.estado = match;
     }
 
@@ -762,7 +839,6 @@
 
       return await response.json();
     } catch (err) {
-      // Re-throw para que lo maneje handleCrudError en el flujo de Swal
       throw err;
     }
   }

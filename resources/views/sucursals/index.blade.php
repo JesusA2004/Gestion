@@ -86,18 +86,12 @@
                                     data-sucursal-row
                                     data-nombre="{{ strtolower($sucursal->nombre) }}"
                                     data-direccion="{{ strtolower($sucursal->direccion ?? '') }}"
-                                    data-activa="{{ $sucursal->activa ? '1' : '0' }}"
                                 >
                                     <td class="px-4 py-4 md:py-5 align-top">
                                         <div class="flex flex-col gap-1.5">
                                             <div class="flex flex-wrap items-center gap-2">
                                                 <span class="font-semibold text-slate-900 text-sm md:text-base">
                                                     {{ $sucursal->nombre }}
-                                                </span>
-                                                <span class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-medium
-                                                    {{ $sucursal->activa ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-rose-50 text-rose-700 border border-rose-100' }}">
-                                                    <span class="h-1.5 w-1.5 rounded-full {{ $sucursal->activa ? 'bg-emerald-400' : 'bg-rose-400' }}"></span>
-                                                    {{ $sucursal->activa ? 'Activa' : 'Inactiva' }}
                                                 </span>
                                             </div>
                                             @if($sucursal->direccion)

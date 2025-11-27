@@ -13,32 +13,99 @@ use Illuminate\Http\Request;
 
 class EmpleadoController extends Controller
 {
-    // Listar empleados con filtros y paginación
+    /**
+     * Listar empleados con filtros y paginación (server-side).
+     * Soporta:
+     *  - search / q        : texto global (nombre, apellidos, num. trabajador, CURP, RFC)
+     *  - estado_imss      : alta | inactivo
+     *  - patron_id        : id patrón
+     *  - sucursal_id      : id sucursal
+     *  - departamento_id  : id departamento
+     *  - supervisor_id    : id supervisor
+     *  - ingreso_desde / ingreso_hasta : fecha_ingreso (Y-m-d)
+     *  - imss_desde / imss_hasta       : fecha_alta_imss (Y-m-d)
+     *
+     * Si la petición es AJAX, devuelve JSON con el HTML de la tabla parcial.
+     */
     public function index(Request $request)
     {
-        $search = trim($request->get('q', ''));
-        $estado = $request->get('estado');        // estado geográfico (Morelos, CDMX, etc.)
+        // Aceptamos tanto ?search= como ?q= por compatibilidad
+        $search = trim($request->get('search', $request->get('q', '')));
 
-        $empleados = Empleado::with(['patron', 'sucursal', 'departamento', 'supervisor'])
-            ->when($search, function ($q) use ($search) {
-                $q->where(function ($inner) use ($search) {
-                    $inner->where('nombres', 'like', "%{$search}%")
-                        ->orWhere('apellidoPaterno', 'like', "%{$search}%")
-                        ->orWhere('apellidoMaterno', 'like', "%{$search}%")
-                        ->orWhere('numero_trabajador', 'like', "%{$search}%")
-                        ->orWhere('curp', 'like', "%{$search}%")
-                        ->orWhere('rfc', 'like', "%{$search}%");
-                });
-            })
-            // filtro por estado geográfico (opcional)
-            ->when($estado !== null && $estado !== '', function ($q) use ($estado) {
-                $q->where('estado', $estado);
-            })
-            ->orderBy('id', 'asc')
+        $estadoImss     = $request->get('estado_imss');
+        $patronId       = $request->get('patron_id');
+        $sucursalId     = $request->get('sucursal_id');
+        $departamentoId = $request->get('departamento_id');
+        $supervisorId   = $request->get('supervisor_id');
+
+        $ingresoDesde = $request->get('ingreso_desde');
+        $ingresoHasta = $request->get('ingreso_hasta');
+        $imssDesde    = $request->get('imss_desde');
+        $imssHasta    = $request->get('imss_hasta');
+
+        $query = Empleado::with(['patron', 'sucursal', 'departamento', 'supervisor']);
+
+        // === Filtro texto global (nombre, apellidos, num. trabajador, CURP, RFC) ===
+        if ($search !== '') {
+            $like = '%' . $search . '%';
+
+            $query->where(function ($q) use ($like) {
+                $q->where('nombres', 'like', $like)
+                    ->orWhere('apellidoPaterno', 'like', $like)
+                    ->orWhere('apellidoMaterno', 'like', $like)
+                    ->orWhere('numero_trabajador', 'like', $like)
+                    ->orWhere('curp', 'like', $like)
+                    ->orWhere('rfc', 'like', $like);
+            });
+        }
+
+        // === Estado IMSS ===
+        if ($estadoImss !== null && $estadoImss !== '') {
+            $query->where('estado_imss', $estadoImss);
+        }
+
+        // === Patrón / sucursal / departamento / supervisor ===
+        if ($patronId) {
+            $query->where('patron_id', $patronId);
+        }
+
+        if ($sucursalId) {
+            $query->where('sucursal_id', $sucursalId);
+        }
+
+        if ($departamentoId) {
+            $query->where('departamento_id', $departamentoId);
+        }
+
+        if ($supervisorId) {
+            $query->where('supervisor_id', $supervisorId);
+        }
+
+        // === Rango de fechas: ingreso ===
+        if ($ingresoDesde) {
+            $query->whereDate('fecha_ingreso', '>=', $ingresoDesde);
+        }
+        if ($ingresoHasta) {
+            $query->whereDate('fecha_ingreso', '<=', $ingresoHasta);
+        }
+
+        // === Rango de fechas: alta IMSS ===
+        if ($imssDesde) {
+            $query->whereDate('fecha_alta_imss', '>=', $imssDesde);
+        }
+        if ($imssHasta) {
+            $query->whereDate('fecha_alta_imss', '<=', $imssHasta);
+        }
+
+        // Orden estándar por nombre
+        $empleados = $query
+            ->orderBy('nombres')
+            ->orderBy('apellidoPaterno')
+            ->orderBy('apellidoMaterno')
             ->paginate(15)
             ->withQueryString();
 
-        // Lookups para selects
+        // Lookups para selects (vista + JS)
         $patrones      = Patron::orderBy('nombre')->get(['id', 'nombre']);
         $sucursales    = Sucursal::orderBy('nombre')->get(['id', 'nombre']);
         $departamentos = Departamento::orderBy('nombre')->get(['id', 'nombre']);
@@ -46,17 +113,26 @@ class EmpleadoController extends Controller
             ->orderBy('apellidoPaterno')
             ->get(['id', 'nombres', 'apellidoPaterno', 'apellidoMaterno']);
 
-        // Versiones "planas" para JSON (sin closures en Blade)
+        // Versiones "planas" para JSON (EmpleadosConfig.lookups)
         $patronesList = $patrones->map(function ($p) {
-            return ['id' => $p->id, 'nombre' => $p->nombre];
+            return [
+                'id'     => $p->id,
+                'nombre' => $p->nombre,
+            ];
         })->values();
 
         $sucursalesList = $sucursales->map(function ($s) {
-            return ['id' => $s->id, 'nombre' => $s->nombre];
+            return [
+                'id'     => $s->id,
+                'nombre' => $s->nombre,
+            ];
         })->values();
 
         $departamentosList = $departamentos->map(function ($d) {
-            return ['id' => $d->id, 'nombre' => $d->nombre];
+            return [
+                'id'     => $d->id,
+                'nombre' => $d->nombre,
+            ];
         })->values();
 
         $supervisoresList = $supervisores->map(function ($s) {
@@ -68,23 +144,42 @@ class EmpleadoController extends Controller
             ];
         })->values();
 
+        // === Respuesta AJAX: solo HTML de la tabla para filtros/paginación en tiempo real ===
+        if ($request->ajax()) {
+            $html = view('empleados._tabla', compact('empleados'))->render();
+
+            return response()->json([
+                'html' => $html,
+            ]);
+        }
+
+        // === Respuesta normal (vista completa) ===
         return view('empleados.index', [
-            'empleados'          => $empleados,
-            'search'             => $search,
-            'estado'             => $estado,
-            'patrones'           => $patrones,
-            'sucursales'         => $sucursales,
-            'departamentos'      => $departamentos,
-            'supervisores'       => $supervisores,
-            'patronesList'       => $patronesList,
-            'sucursalesList'     => $sucursalesList,
-            'departamentosList'  => $departamentosList,
-            'supervisoresList'   => $supervisoresList,
+            'empleados'         => $empleados,
+            'search'            => $search,
+            'estado_imss'       => $estadoImss,
+            'patron_id'         => $patronId,
+            'sucursal_id'       => $sucursalId,
+            'departamento_id'   => $departamentoId,
+            'supervisor_id'     => $supervisorId,
+            'ingreso_desde'     => $ingresoDesde,
+            'ingreso_hasta'     => $ingresoHasta,
+            'imss_desde'        => $imssDesde,
+            'imss_hasta'        => $imssHasta,
+            'patrones'          => $patrones,
+            'sucursales'        => $sucursales,
+            'departamentos'     => $departamentos,
+            'supervisores'      => $supervisores,
+            'patronesList'      => $patronesList,
+            'sucursalesList'    => $sucursalesList,
+            'departamentosList' => $departamentosList,
+            'supervisoresList'  => $supervisoresList,
         ]);
     }
 
     /**
-     * Cambiar estado IMSS del empleado (alta / inactivo)
+     * Cambiar estado IMSS del empleado (alta / inactivo).
+     * Endpoint esperado por JS: PATCH /empleados/{empleado}/estado
      */
     public function cambiarEstado(Request $request, Empleado $empleado)
     {
@@ -104,20 +199,26 @@ class EmpleadoController extends Controller
 
     public function create()
     {
+        // Se gestiona todo desde modales en la vista de índice
         return redirect()->route('empleados.index');
     }
 
     public function show(Empleado $empleado)
     {
+        // También se ve en modal, no en página dedicada
         return redirect()->route('empleados.index');
     }
 
     public function edit(Empleado $empleado)
     {
+        // La edición es vía modal + AJAX
         return redirect()->route('empleados.index');
     }
 
-    // Almacenar nuevo empleado
+    /**
+     * Almacenar nuevo empleado (AJAX).
+     * Endpoint: POST /empleados
+     */
     public function store(EmpleadoRequest $request)
     {
         $empleado = Empleado::create($request->validated());
@@ -131,7 +232,10 @@ class EmpleadoController extends Controller
         ]);
     }
 
-    // Actualizar empleado
+    /**
+     * Actualizar empleado (AJAX).
+     * Endpoint: PUT /empleados/{empleado}
+     */
     public function update(EmpleadoRequest $request, Empleado $empleado)
     {
         $empleado->update($request->validated());
@@ -145,7 +249,10 @@ class EmpleadoController extends Controller
         ]);
     }
 
-    // Eliminar empleado
+    /**
+     * Eliminar empleado (AJAX).
+     * Endpoint: DELETE /empleados/{empleado}
+     */
     public function destroy(Empleado $empleado)
     {
         $empleado->delete();
@@ -155,5 +262,4 @@ class EmpleadoController extends Controller
             'message' => 'Empleado eliminado correctamente.',
         ]);
     }
-    
 }

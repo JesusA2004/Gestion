@@ -70,17 +70,10 @@ Route::middleware('auth')->group(function () {
         ->name('reportes.export');
 
     // 🔹 Base de datos (carga de datos y respaldo)
-    // Vista principal 
-    Route::get('/backup', [BackupController::class, 'index'])
-        ->name('backup.index');
-
-    // Descargar respaldo
-    Route::get('/backup/descargar', [BackupController::class, 'download'])
-        ->name('backup.download');
-
-    // Restaurar desde archivo SQL
-    Route::post('/backup/restaurar', [BackupController::class, 'restore'])
-        ->name('backup.restore');
+    Route::get('/backup', [BackupController::class, 'index'])->name('backup.index');
+    Route::get('/backup/download', [BackupController::class, 'download'])->name('backup.download');
+    Route::post('/backup/restore', [BackupController::class, 'restore'])->name('backup.restore');
+    Route::post('/backup/import-excel', [BackupController::class, 'importExcel'])->name('backup.importExcel');
 
 });
 

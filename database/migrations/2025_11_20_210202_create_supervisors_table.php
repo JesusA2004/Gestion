@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('supervisors', function (Blueprint $table) {
             $table->id();
             $table->string('nombres');
-            $table->string('apellidoPaterno');
+            $table->string('apellidoPaterno')->nullable();
             $table->string('apellidoMaterno')->nullable();
             $table->timestamps();
         });

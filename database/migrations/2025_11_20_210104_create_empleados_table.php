@@ -48,16 +48,16 @@ return new class extends Migration
             /*
              * IMSS
              */
-            $table->string('numero_imss', 20)->unique();
-            $table->string('registro_patronal', 30);
+            $table->string('numero_imss', 20)->nullable();
+            $table->string('registro_patronal', 30)->nullable();
             $table->string('codigo_postal', 10)->nullable();
-            $table->date('fecha_alta_imss');
+            $table->date('fecha_alta_imss')->nullable();
 
             /*
              * IDENTIFICACIONES
              */
-            $table->string('curp', 18)->unique();
-            $table->string('rfc', 18)->unique();
+            $table->string('curp', 20)->nullable();
+            $table->string('rfc', 21)->nullable();
 
             /*
              * DATOS BANCARIOS
